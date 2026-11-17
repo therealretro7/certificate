@@ -461,10 +461,7 @@ function renderCertificate(targetCanvas = elements.certificateCanvas, certData =
   ctx.fillText(date, 376, 1242);
   ctx.restore();
 
-  // 4. Draw QR Code (Center at X: 924, Y: 1160, W: 200, H: 200)
-  drawVerificationQrCode(ctx, certId, name, speaker, 924, 1160, 200, 200);
-
-  // 5. Draw Signature & Speaker Details (Right Side)
+  // 4. Draw Signature & Speaker Details (Right Side)
   // In 2048x1476 space: center X = 1670, underline is at Y = 1258
   const sigCX = 1670;
   const sigImgKey = `${speaker.id}Sig`;
@@ -616,6 +613,8 @@ async function handleCertificateRequest() {
         certId: certId,
         eventName: "Game On: Imagine the Impossible",
         speakerName: speaker.name,
+        speakerId: speaker.id,
+        eventDate: eventDate,
         imageData: certImageBase64
       })
     });

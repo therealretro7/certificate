@@ -22,7 +22,7 @@ SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER = os.environ.get("SMTP_USER", "aswinashokkv@gmail.com")
 SMTP_PASS = os.environ.get("SMTP_PASS", "hcosmwoaoafguhvc")
 
-def send_certificate_email(to_email, full_name, cert_id, event_name, speaker_name, image_data=None):
+def send_certificate_email(to_email, full_name, cert_id, event_name, speaker_name, speaker_id="admin1", event_date="08/10/2026", image_data=None):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     subject = f"Your Certificate of Participation: {event_name} (ID: {cert_id})"
     
@@ -48,16 +48,17 @@ def send_certificate_email(to_email, full_name, cert_id, event_name, speaker_nam
                 <div style="padding: 28px;">
                   <h2 style="font-size: 20px; color: #202124; margin-top: 0;">Dear {full_name},</h2>
                   <p style="font-size: 15px; line-height: 1.6; color: #3c4043;">
-                    Congratulations! Your Certificate of Participation for <strong>{event_name}</strong> conducted by <strong>{speaker_name}</strong> has been generated and validated.
+                    Congratulations! Your official Certificate of Participation for <strong>{event_name}</strong> conducted by <strong>{speaker_name}</strong> has been generated and validated.
                   </p>
                   <div style="background: #f1f3f4; border-radius: 8px; padding: 16px; margin: 20px 0; font-size: 14px;">
                     <div><strong>Certificate ID:</strong> <span style="font-family: monospace;">{cert_id}</span></div>
                     <div style="margin-top: 6px;"><strong>Issued To:</strong> {full_name}</div>
                     <div style="margin-top: 6px;"><strong>Ambassador:</strong> {speaker_name}</div>
-                    <div style="margin-top: 6px;"><strong>Status:</strong> Verified Authenticated</div>
+                    <div style="margin-top: 6px;"><strong>Issue Date:</strong> {event_date}</div>
+                    <div style="margin-top: 6px;"><strong>Status:</strong> Authenticated ✅</div>
                   </div>
                   <p style="font-size: 14px; color: #5f6368;">
-                    You can verify this certificate anytime using the official verification link or the embedded QR code.
+                    Your official certificate image is attached to this email. You can also verify this certificate anytime on the portal using Certificate ID <strong>{cert_id}</strong>.
                   </p>
                 </div>
               </div>
@@ -66,23 +67,41 @@ def send_certificate_email(to_email, full_name, cert_id, event_name, speaker_nam
             """
             msg.attach(MIMEText(html_body, "html"))
 
-            # Attach Certificate Image if provided
+            # Attach Certificate Image: Client base64 or server-rendered
+            attached = False
             if image_data and "," in image_data:
                 try:
                     img_bytes = base64.b64decode(image_data.split(",")[1])
-                    img_part = MIMEImage(img_bytes)
-                    img_part.add_header("Content-Disposition", "attachment", filename=f"Certificate_{cert_id}.png")
-                    msg.attach(img_part)
-                except Exception as img_err:
-                    print("Could not attach image:", img_err)
-            elif os.path.exists(os.path.join(BASE_DIR, "template_clean_2x.png")):
-                try:
-                    with open(os.path.join(BASE_DIR, "template_clean_2x.png"), "rb") as f:
-                        img_part = MIMEImage(f.read())
+                    if len(img_bytes) > 5000:
+                        img_part = MIMEImage(img_bytes)
                         img_part.add_header("Content-Disposition", "attachment", filename=f"Certificate_{cert_id}.png")
                         msg.attach(img_part)
+                        attached = True
                 except Exception as img_err:
-                    print("Could not attach default template:", img_err)
+                    print("Could not attach client image:", img_err)
+
+            if not attached:
+                # Server-side render using render_cert_service.ps1
+                rendered_path = os.path.join(BASE_DIR, f"cert_{cert_id}.png")
+                script_path = os.path.join(BASE_DIR, "render_cert_service.ps1")
+                try:
+                    import subprocess
+                    subprocess.run([
+                        "powershell", "-ExecutionPolicy", "Bypass", "-File", script_path,
+                        full_name, event_date, speaker_id, rendered_path
+                    ], capture_output=True, timeout=10)
+                    if os.path.exists(rendered_path):
+                        with open(rendered_path, "rb") as f:
+                            img_part = MIMEImage(f.read())
+                            img_part.add_header("Content-Disposition", "attachment", filename=f"Certificate_{cert_id}.png")
+                            msg.attach(img_part)
+                            attached = True
+                        try:
+                            os.remove(rendered_path)
+                        except Exception:
+                            pass
+                except Exception as render_err:
+                    print("Server render error:", render_err)
 
             with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
                 server.starttls()
@@ -369,12 +388,14 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
             cert_id = payload.get("certId", "").strip()
             event_name = payload.get("eventName", "Game On: Imagine the Impossible")
             speaker_name = payload.get("speakerName", "Google Student Ambassador")
+            speaker_id = payload.get("speakerId", "admin1")
+            event_date = payload.get("eventDate", "08/10/2026")
             image_data = payload.get("imageData")
 
             if not to_email:
                 return self._send_json(400, {"success": False, "message": "Recipient email is required"})
 
-            res = send_certificate_email(to_email, full_name, cert_id, event_name, speaker_name, image_data)
+            res = send_certificate_email(to_email, full_name, cert_id, event_name, speaker_name, speaker_id, event_date, image_data)
             return self._send_json(200, res)
 
         elif parsed.path == "/api/requests":
