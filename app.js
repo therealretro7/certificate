@@ -595,8 +595,19 @@ async function handleCertificateRequest() {
   // 2. Dispatch certificate email via backend API
   let emailDispatched = false;
   try {
-    const certImageBase64 = elements.certificateCanvas.toDataURL("image/png", 0.92);
-    const resp = await fetch("/api/send-email", {
+    let certImageBase64 = null;
+    try {
+      // Export canvas (lower quality 0.85 to keep payload fast and snappy)
+      certImageBase64 = elements.certificateCanvas.toDataURL("image/png", 0.85);
+    } catch (canvasErr) {
+      console.warn("Canvas export fallback (e.g. file:// taint):", canvasErr);
+    }
+
+    const apiUrl = (window.location.protocol && window.location.protocol.startsWith("http"))
+      ? `${window.location.origin}/api/send-email`
+      : "http://localhost:8000/api/send-email";
+
+    const resp = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

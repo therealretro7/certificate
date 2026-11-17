@@ -75,6 +75,14 @@ def send_certificate_email(to_email, full_name, cert_id, event_name, speaker_nam
                     msg.attach(img_part)
                 except Exception as img_err:
                     print("Could not attach image:", img_err)
+            elif os.path.exists(os.path.join(BASE_DIR, "template_clean_2x.png")):
+                try:
+                    with open(os.path.join(BASE_DIR, "template_clean_2x.png"), "rb") as f:
+                        img_part = MIMEImage(f.read())
+                        img_part.add_header("Content-Disposition", "attachment", filename=f"Certificate_{cert_id}.png")
+                        msg.attach(img_part)
+                except Exception as img_err:
+                    print("Could not attach default template:", img_err)
 
             with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
                 server.starttls()
