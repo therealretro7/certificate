@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Student Ambassador - Certificate Portal</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,600;1,700&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <a href="#" class="brand-wrapper" id="brandHomeBtn">
+      <svg class="google-logo-svg" viewBox="0 0 272 92" width="80" height="27">
+        <path fill="#EA4335" d="M115.75 47.18c0 12.77-9.99 22.18-22.25 22.18s-22.25-9.41-22.25-22.18C71.25 34.32 81.24 25 93.5 25s22.25 9.32 22.25 22.18zm-9.74 0c0-7.98-5.79-13.44-12.51-13.44S80.99 39.2 80.99 47.18c0 7.9 5.79 13.44 12.51 13.44s12.51-5.55 12.51-13.44z"/>
+        <path fill="#FBBC05" d="M163.75 47.18c0 12.77-9.99 22.18-22.25 22.18s-22.25-9.41-22.25-22.18c0-12.85 9.99-22.18 22.25-22.18s22.25 9.32 22.25 22.18zm-9.74 0c0-7.98-5.79-13.44-12.51-13.44s-12.51 5.46-12.51 13.44c0 7.9 5.79 13.44 12.51 13.44s12.51-5.55 12.51-13.44z"/>
+        <path fill="#4285F4" d="M209.75 26.34v39.82c0 16.38-9.66 23.07-21.08 23.07-10.75 0-17.22-7.19-19.66-13.07l8.48-3.53c1.51 3.61 5.21 8.16 11.17 8.16 7.23 0 11.75-4.47 11.75-12.87v-3.17h-.34c-2.18 2.68-6.38 5.04-11.68 5.04-11.09 0-21.25-9.66-21.25-22.09 0-12.52 10.16-22.26 21.25-22.26 5.29 0 9.49 2.35 11.68 4.96h.34v-4.05h9.74zm-8.99 21.01c0-7.82-5.21-13.44-11.93-13.44-6.8 0-12.51 5.62-12.51 13.44 0 7.73 5.71 13.44 12.51 13.44 6.72 0 11.93-5.71 11.93-13.44z"/>
+        <path fill="#34A853" d="M225 3v65h-9.5V3h9.5z"/>
+        <path fill="#EA4335" d="M262.02 54.48l7.56 5.04c-2.44 3.61-8.32 9.83-18.48 9.83-12.6 0-22.01-9.74-22.01-22.18 0-13.19 9.49-22.18 20.92-22.18 11.51 0 17.14 9.16 18.98 14.11l1.01 2.52-29.65 12.28c2.27 4.45 5.8 6.72 10.75 6.72 4.96 0 8.4-2.44 10.92-6.14zm-13.27-8.24l19.82-8.23c-1.09-2.77-4.37-4.7-8.23-4.7-4.95 0-11.84 4.37-11.59 12.93z"/>
+        <path fill="#4285F4" d="M35.29 41.41V32H67c.31 1.64.47 3.58.47 5.68 0 7.06-1.93 15.79-8.15 22.01-6.05 6.3-13.78 9.66-24.02 9.66C16.32 69.35.36 53.89.36 34.91.36 15.93 16.32.47 35.3.47c10.5 0 17.98 4.12 23.6 9.49l-6.64 6.64c-4.03-3.78-9.49-6.72-16.97-6.72-13.86 0-24.7 11.17-24.7 25.03 0 13.86 10.84 25.03 24.7 25.03 8.99 0 14.11-3.61 17.39-6.89 2.66-2.66 4.41-6.46 5.1-11.65l-22.49.01z"/>
+      </svg>
+      <div class="brand-divider"></div>
+      <span class="brand-text">Student Ambassador Portal</span>
+      <span class="brand-tag">2026 Edition</span>
+      <div class="supabase-status-pill" id="supabaseStatusPill" title="Connected to Supabase Cloud Database (sxbnutustirzmesuillx)">
+        <span class="status-dot"></span>
+        <span class="status-text">Supabase Connected</span>
+      </div>
+    </a>
+
+    <nav class="nav-links">
+      <button class="nav-btn active" id="navClientBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        Request Certificate
+      </button>
+
+      <button class="nav-btn" id="navVerifyBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        Verify
+      </button>
+
+      <button class="nav-btn" id="navAdminBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        Admin Portal
+      </button>
+
+      <!-- Active Admin Pill (hidden by default) -->
+      <div id="activeAdminPill" class="admin-badge" style="display: none;">
+        <div class="admin-avatar" id="adminAvatarInitial">A</div>
+        <span id="adminNameDisplay">ASWIN ASOK KV</span>
+        <button id="adminLogoutBtn" title="Logout" style="background: none; border: none; cursor: pointer; color: #5f6368; display: flex; align-items: center; margin-left: 0.25rem;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Hero Banner -->
+  <section class="hero-banner">
+    <div class="hero-pill">
+      <span>✨</span> Google Student Ambassador Program 2026
+    </div>
+    <h1>Certificate Generation & Request Portal</h1>
+    <p>Product Trial & Festival Session: <strong>Game On: Imagine the Impossible</strong>. Request, generate, and verify your authentic participation certificates.</p>
+  </section>
+
+  <!-- Main Content Body -->
+  <main class="container">
+
+    <!-- ==========================================
+         VIEW 1: CLIENT PORTAL (REQUEST CERTIFICATE)
+         ========================================== -->
+    <section id="viewClient" class="view-section active">
+      <div class="generator-grid">
+
+        <!-- Form Left Column -->
+        <div class="card">
+          <h2 class="card-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            Participant Details
+          </h2>
+          <p class="card-subtitle">Fill in your information exactly as it should appear on your official certificate.</p>
+
+          <form id="certificateForm">
+            <!-- Full Name -->
+            <div class="form-group">
+              <label class="form-label" for="participantName">
+                Full Name <span class="required">*</span>
+              </label>
+              <input type="text" id="participantName" class="form-control" placeholder="e.g. Aswin Asok kv" value="Aswin Asok kv" required>
+              <div class="form-hint">This name will be printed prominently on the certificate.</div>
+            </div>
+
+            <!-- Email Address -->
+            <div class="form-group">
+              <label class="form-label" for="participantEmail">
+                Email Address <span class="required">*</span>
+              </label>
+              <input type="email" id="participantEmail" class="form-control" placeholder="e.g. name@student.edu" value="aswin.asok@example.com" required>
+            </div>
+
+            <!-- College / Institution -->
+            <div class="form-group">
+              <label class="form-label" for="participantCollege">
+                College / Institution / Department
+              </label>
+              <input type="text" id="participantCollege" class="form-control" placeholder="e.g. College of Engineering" value="College of Engineering">
+            </div>
+
+            <!-- Session Speaker Selection (MANDATORY REQUIREMENT) -->
+            <div class="form-group">
+              <label class="form-label">
+                Session Taken By (Admin Speaker) <span class="required">*</span>
+              </label>
+              <div class="form-hint" style="margin-bottom: 0.5rem;">
+                Select the Google Student Ambassador who conducted your session:
+              </div>
+
+              <div class="speaker-selection">
+                <!-- Admin 1: ASWIN ASOK KV -->
+                <label class="speaker-card selected" id="cardSpeakerAdmin1">
+                  <input type="radio" name="speakerSelect" value="admin1" class="speaker-radio" checked>
+                  <div class="speaker-avatar" style="background: linear-gradient(135deg, #1a73e8, #4285f4);">A</div>
+                  <div class="speaker-info">
+                    <div class="speaker-name">
+                      ASWIN ASOK KV
+                    </div>
+                    <div class="speaker-role">Google Student Ambassador</div>
+                    <span class="speaker-gid-tag">GID: 14248</span>
+                  </div>
+                  <div class="speaker-check-icon">✓</div>
+                </label>
+
+                <!-- Admin 2: Paulbin Chacko -->
+                <label class="speaker-card" id="cardSpeakerAdmin2">
+                  <input type="radio" name="speakerSelect" value="admin2" class="speaker-radio">
+                  <div class="speaker-avatar" style="background: linear-gradient(135deg, #34a853, #0f9d58);">P</div>
+                  <div class="speaker-info">
+                    <div class="speaker-name">
+                      Paulbin Chacko
+                    </div>
+                    <div class="speaker-role">Google Student Ambassador</div>
+                    <span class="speaker-gid-tag">GID: 12348</span>
+                  </div>
+                  <div class="speaker-check-icon">✓</div>
+                </label>
+
+                <!-- Admin 3: THOMAS -->
+                <label class="speaker-card" id="cardSpeakerAdmin3">
+                  <input type="radio" name="speakerSelect" value="admin3" class="speaker-radio">
+                  <div class="speaker-avatar" style="background: linear-gradient(135deg, #ea4335, #d93025);">T</div>
+                  <div class="speaker-info">
+                    <div class="speaker-name">
+                      THOMAS
+                    </div>
+                    <div class="speaker-role">Google Student Ambassador</div>
+                    <span class="speaker-gid-tag">GID: 1443</span>
+                  </div>
+                  <div class="speaker-check-icon">✓</div>
+                </label>
+              </div>
+            </div>
+
+            <!-- Session / Event Date -->
+            <div class="form-group">
+              <label class="form-label" for="sessionDate">Event / Session Date</label>
+              <input type="text" id="sessionDate" class="form-control" value="08/10/2026" placeholder="DD/MM/YYYY">
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn-submit" id="requestSubmitBtn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+              Request Certificate (Email to Me)
+            </button>
+          </form>
+        </div>
+
+        <!-- Certificate Live Preview Right Column -->
+        <div class="preview-panel">
+          <div class="card">
+            <div class="preview-header">
+              <div>
+                <h2 class="card-title">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34a853" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                  Live Certificate Preview
+                </h2>
+                <div class="card-subtitle" style="margin-bottom: 0;">Real-time rendering with exact speaker signature & GID</div>
+              </div>
+
+              <div class="preview-badge">
+                <span>●</span> Real-time Live
+              </div>
+            </div>
+
+            <!-- Certificate Canvas -->
+            <div class="canvas-wrapper" style="margin-top: 1.25rem;">
+              <canvas id="certificateCanvas" width="2048" height="1476"></canvas>
+            </div>
+
+            <!-- Verification & Certificate ID Pill -->
+            <div class="verification-card" style="margin-top: 1.25rem;">
+              <div>
+                Certificate ID: <span class="cert-id-tag" id="currentCertIdDisplay">CERT-2026-14248</span>
+              </div>
+              <div style="color: var(--text-secondary); display: flex; align-items: center; gap: 0.4rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34a853" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Digital Signature Verified
+              </div>
+            </div>
+
+            <!-- Certificate Email Dispatched Card -->
+            <div id="emailSentNotification" class="email-sent-card" style="display: none; margin-top: 1.25rem;">
+              <div style="display: flex; align-items: flex-start; gap: 0.85rem;">
+                <div style="width: 44px; height: 44px; border-radius: 50%; background: #e6f4ea; color: #137333; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;">
+                  ✉️
+                </div>
+                <div style="flex: 1;">
+                  <div style="font-weight: 600; color: #137333; font-size: 1.05rem;">Certificate Dispatched via Email!</div>
+                  <p style="margin: 0.35rem 0 0.5rem 0; font-size: 0.9rem; color: #3c4043; line-height: 1.45;">
+                    Your authentic certificate has been generated and emailed directly to <strong id="sentEmailAddressText" style="color: #1a73e8;"></strong>. Please check your inbox.
+                  </p>
+                  <div style="display: flex; gap: 0.6rem; align-items: center; font-size: 0.82rem; color: #5f6368; flex-wrap: wrap;">
+                    <span>Certificate ID: <strong id="sentCertIdText" style="font-family: monospace; color: #202124;"></strong></span>
+                    <span>•</span>
+                    <span style="color: #137333; font-weight: 600;">Status: Email Sent 🚀</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Client Action Buttons -->
+            <div class="client-actions" style="margin-top: 1.25rem; display: flex; gap: 0.75rem; justify-content: flex-end;">
+              <button class="btn-secondary" id="copyVerifyLinkBtn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                Copy Verification Link
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==========================================
+         VIEW 2: VERIFICATION PORTAL
+         ========================================== -->
+    <section id="viewVerify" class="view-section">
+      <div style="max-width: 680px; margin: 1rem auto;">
+        <div class="card" style="text-align: center;">
+          <div style="width: 54px; height: 54px; background: #e8f0fe; color: #1a73e8; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.5rem;">
+            🔍
+          </div>
+          <h2 class="card-title" style="justify-content: center;">Verify Certificate Authenticity</h2>
+          <p class="card-subtitle">Enter the Certificate ID found at the bottom of the certificate or scan the QR code to verify validity.</p>
+
+          <div style="display: flex; gap: 0.5rem; max-width: 480px; margin: 0 auto 1.5rem;">
+            <input type="text" id="verifyInputId" class="form-control" placeholder="e.g. CERT-2026-1001" style="text-align: center; font-weight: 600; text-transform: uppercase;">
+            <button class="nav-btn-primary" id="btnRunVerification" style="padding: 0 1.5rem; border-radius: var(--radius-sm); border: none; cursor: pointer;">
+              Verify
+            </button>
+          </div>
+
+          <!-- Result Box -->
+          <div id="verifyResultBox" style="display: none; text-align: left; background: #f8fafd; border: 1px solid #d2e3fc; border-radius: var(--radius-sm); padding: 1.5rem; margin-top: 1rem;">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         VIEW 3: ADMIN PORTAL
+         ========================================== -->
+    <section id="viewAdmin" class="view-section">
+
+      <!-- Login Card (Shown if not authenticated) -->
+      <div id="adminLoginSection" class="admin-login-wrapper">
+        <div class="admin-login-card">
+          <div class="admin-lock-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          </div>
+          <h2 style="font-size: 1.4rem; font-weight: 700; margin-bottom: 0.35rem;">Admin Portal Access</h2>
+          <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+            Authorized Google Student Ambassador Admins only.
+          </p>
+
+          <form id="adminLoginForm">
+            <div class="form-group" style="text-align: left;">
+              <label class="form-label" for="adminUsernameInput">Admin Username</label>
+              <input type="text" id="adminUsernameInput" class="form-control" placeholder="e.g. ASWIN ASOK KV" required>
+            </div>
+
+            <div class="form-group" style="text-align: left;">
+              <label class="form-label" for="adminPasswordInput">Password</label>
+              <input type="password" id="adminPasswordInput" class="form-control" placeholder="••••••••" required>
+            </div>
+
+            <button type="submit" class="btn-submit" style="margin-top: 1rem;">
+              Sign In to Admin Portal
+            </button>
+          </form>
+
+          <!-- Quick Access Credentials Helper for Admins -->
+          <div class="admin-hint-box">
+            <div class="admin-hint-title">Authorized Admin Accounts:</div>
+            <div style="margin-bottom: 0.4rem;">
+              <strong>Admin 1:</strong> <code>ASWIN ASOK KV</code> (Pass: <code>Aswin_Achu12</code> | GID: 14248)
+            </div>
+            <div style="margin-bottom: 0.4rem;">
+              <strong>Admin 2:</strong> <code>Paulbin Chacko</code> (Pass: <code>Paulbin@2005</code> | GID: 12348)
+            </div>
+            <div>
+              <strong>Admin 3:</strong> <code>THOMAS</code> (Pass: <code>thomas@2026</code> | GID: 1443)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Admin Dashboard (Shown when logged in) -->
+      <div id="adminDashboardSection" style="display: none;">
+
+        <!-- Top Header Info -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 style="font-size: 1.6rem; font-weight: 700; color: #202124;">
+              Certificate Requests Management
+            </h2>
+            <p style="color: var(--text-secondary); font-size: 0.92rem;">
+              Track, approve, and download certificates requested by attendees.
+            </p>
+          </div>
+
+          <div style="display: flex; gap: 0.75rem;">
+            <button class="nav-btn-primary" id="btnExportCsv" style="border: none; cursor: pointer; padding: 0.6rem 1.1rem; border-radius: var(--radius-sm);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              Export to CSV
+            </button>
+            <button class="btn-secondary" id="btnAdminLogout">
+              Logout
+            </button>
+          </div>
+        </div>
+
+        <!-- Stats Overview Cards -->
+        <div class="admin-stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon blue">📋</div>
+            <div>
+              <div class="stat-value" id="statTotalRequests">0</div>
+              <div class="stat-label">Total Requests</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon green">🎯</div>
+            <div>
+              <div class="stat-value" id="statMyRequests">0</div>
+              <div class="stat-label">My Session Requests</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon yellow">⏳</div>
+            <div>
+              <div class="stat-value" id="statPendingRequests">0</div>
+              <div class="stat-label">Pending Reviews</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon purple">📥</div>
+            <div>
+              <div class="stat-value" id="statDownloadedCount">0</div>
+              <div class="stat-label">Certificates Downloaded</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter and Search Toolbar -->
+        <div class="admin-toolbar">
+          <div class="toolbar-row">
+            <div class="search-input-wrapper">
+              <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input type="text" id="adminSearchInput" placeholder="Search by participant name, email, college, or ID...">
+            </div>
+
+            <!-- Speaker Filter -->
+            <div class="filter-group">
+              <span style="font-size: 0.85rem; font-weight: 600; color: #5f6368;">Speaker:</span>
+              <button class="filter-btn active" data-filter-speaker="all">All Speakers</button>
+              <button class="filter-btn" data-filter-speaker="mine">My Sessions</button>
+              <button class="filter-btn" data-filter-speaker="admin1">Aswin</button>
+              <button class="filter-btn" data-filter-speaker="admin2">Paulbin</button>
+              <button class="filter-btn" data-filter-speaker="admin3">Thomas</button>
+            </div>
+          </div>
+
+          <div class="toolbar-row" style="border-top: 1px solid #f1f3f4; padding-top: 0.75rem;">
+            <!-- Status Filter -->
+            <div class="filter-group">
+              <span style="font-size: 0.85rem; font-weight: 600; color: #5f6368;">Status:</span>
+              <button class="filter-btn active" data-filter-status="all">All Status</button>
+              <button class="filter-btn" data-filter-status="Requested">Requested</button>
+              <button class="filter-btn" data-filter-status="Approved">Approved</button>
+              <button class="filter-btn" data-filter-status="Downloaded">Downloaded</button>
+            </div>
+
+            <div style="font-size: 0.85rem; color: var(--text-muted);" id="requestCountLabel">
+              Showing 0 requests
+            </div>
+          </div>
+        </div>
+
+        <!-- Requests Data Table -->
+        <div class="table-card">
+          <div class="table-responsive">
+            <table class="requests-table">
+              <thead>
+                <tr>
+                  <th>Cert ID</th>
+                  <th>Participant</th>
+                  <th>College / Institution</th>
+                  <th>Session Speaker</th>
+                  <th>Requested Date</th>
+                  <th>Status</th>
+                  <th>Downloads</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="requestsTableBody">
+                <!-- Dynamically populated rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Admin Profiles & Signatures Card -->
+        <div class="card" style="margin-top: 2rem;">
+          <h3 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            Registered Admin Ambasssadors & Signatures
+          </h3>
+          <p class="card-subtitle">Verified Google Student Ambassador signing credentials assigned to certificates:</p>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+            <!-- Admin 1 -->
+            <div style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 1.25rem; background: #f8fafd;">
+              <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                <div class="speaker-avatar" style="width: 38px; height: 38px; font-size: 0.95rem;">A</div>
+                <div>
+                  <div style="font-weight: 700;">ASWIN ASOK KV</div>
+                  <div style="font-size: 0.78rem; color: var(--text-secondary);">GID: 14248</div>
+                </div>
+              </div>
+              <div style="height: 60px; display: flex; align-items: center; justify-content: center; background: white; border-radius: 6px; border: 1px dashed #d2e3fc; padding: 0.5rem;">
+                <img src="Aswin Signature.png" alt="Aswin Signature" style="max-height: 50px; max-width: 100%; object-fit: contain;">
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 0.4rem;">
+                Signature: Aswin Signature.png
+              </div>
+            </div>
+
+            <!-- Admin 2 -->
+            <div style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 1.25rem; background: #f8fafd;">
+              <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                <div class="speaker-avatar" style="width: 38px; height: 38px; font-size: 0.95rem; background: #34a853;">P</div>
+                <div>
+                  <div style="font-weight: 700;">Paulbin Chacko</div>
+                  <div style="font-size: 0.78rem; color: var(--text-secondary);">GID: 12348</div>
+                </div>
+              </div>
+              <div style="height: 60px; display: flex; align-items: center; justify-content: center; background: white; border-radius: 6px; border: 1px dashed #d2e3fc; padding: 0.5rem;">
+                <img src="paul_signature_transparent.png" alt="Paulbin Signature" style="max-height: 50px; max-width: 100%; object-fit: contain;">
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 0.4rem;">
+                Signature: paul.sign.jpeg (Optimized)
+              </div>
+            </div>
+
+            <!-- Admin 3 -->
+            <div style="border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 1.25rem; background: #f8fafd;">
+              <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                <div class="speaker-avatar" style="width: 38px; height: 38px; font-size: 0.95rem; background: #ea4335;">T</div>
+                <div>
+                  <div style="font-weight: 700;">THOMAS</div>
+                  <div style="font-size: 0.78rem; color: var(--text-secondary);">GID: 1443</div>
+                </div>
+              </div>
+              <div style="height: 60px; display: flex; align-items: center; justify-content: center; background: white; border-radius: 6px; border: 1px dashed #d2e3fc; padding: 0.5rem;">
+                <img src="thomas_signature.png" alt="Thomas Signature" style="max-height: 50px; max-width: 100%; object-fit: contain;">
+              </div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 0.4rem;">
+                Signature: Digital Calligraphy Signature
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal for Full Certificate View -->
+  <div class="modal-overlay" id="previewModal">
+    <div class="modal-content">
+      <button class="modal-close-btn" id="modalCloseBtn">&times;</button>
+      <h3 style="margin-bottom: 0.5rem; font-size: 1.25rem;">Certificate Preview</h3>
+      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;" id="modalCertSub">
+        Generated for Participant
+      </p>
+
+      <div style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; margin-bottom: 1.25rem;">
+        <canvas id="modalCanvas" width="2048" height="1476" style="width: 100%; display: block;"></canvas>
+      </div>
+
+      <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+        <button class="btn-download-png" id="modalDownloadPngBtn">
+          Download PNG
+        </button>
+        <button class="btn-download-pdf" id="modalDownloadPdfBtn">
+          Download PDF
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toastNotification">
+    <span id="toastMessage">Notification message</span>
+  </div>
+
+  <!-- Hidden QR Element for QR Code Generator -->
+  <div id="hiddenQrContainer" style="display: none;"></div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div>Google Student Ambassador Program • Game On: Imagine the Impossible 2026</div>
+    <div style="margin-top: 0.25rem; font-size: 0.75rem; color: var(--text-muted);">
+      Authorized Signatories: ASWIN ASOK KV (14248) • Paulbin Chacko (12348) • THOMAS (1443)
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="qrcode.min.js"></script>
+  <script src="jspdf.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,445 @@
+import http.server
+import socketserver
+import json
+import os
+import urllib.parse
+import urllib.request
+import base64
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
+from datetime import datetime
+
+PORT = 8000
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_FILE = os.path.join(BASE_DIR, "requests.json")
+DISPATCHED_EMAILS_FILE = os.path.join(BASE_DIR, "dispatched_emails.json")
+
+# SMTP Configuration (Can be customized via Environment variables)
+SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", "aswinashokkv@gmail.com")
+SMTP_PASS = os.environ.get("SMTP_PASS", "hcosmwoaoafguhvc")
+
+def send_certificate_email(to_email, full_name, cert_id, event_name, speaker_name, image_data=None):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    subject = f"Your Certificate of Participation: {event_name} (ID: {cert_id})"
+    
+    # Check if SMTP credentials are provided
+    smtp_sent = False
+    error_msg = None
+    
+    if SMTP_USER and SMTP_PASS:
+        try:
+            msg = MIMEMultipart("related")
+            msg["Subject"] = subject
+            msg["From"] = f"Google Student Ambassador Program <{SMTP_USER}>"
+            msg["To"] = to_email
+
+            html_body = f"""
+            <html>
+            <body style="font-family: 'Google Sans', Roboto, Arial, sans-serif; background-color: #f8f9fa; padding: 24px; color: #202124;">
+              <div style="max-width: 620px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #dadce0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
+                <div style="background: linear-gradient(135deg, #1a73e8, #4285f4); padding: 24px; color: white; text-align: center;">
+                  <h1 style="margin: 0; font-size: 24px; font-weight: 600;">Google Student Ambassador Program</h1>
+                  <p style="margin: 6px 0 0; opacity: 0.9; font-size: 15px;">Certificate of Participation</p>
+                </div>
+                <div style="padding: 28px;">
+                  <h2 style="font-size: 20px; color: #202124; margin-top: 0;">Dear {full_name},</h2>
+                  <p style="font-size: 15px; line-height: 1.6; color: #3c4043;">
+                    Congratulations! Your Certificate of Participation for <strong>{event_name}</strong> conducted by <strong>{speaker_name}</strong> has been generated and validated.
+                  </p>
+                  <div style="background: #f1f3f4; border-radius: 8px; padding: 16px; margin: 20px 0; font-size: 14px;">
+                    <div><strong>Certificate ID:</strong> <span style="font-family: monospace;">{cert_id}</span></div>
+                    <div style="margin-top: 6px;"><strong>Issued To:</strong> {full_name}</div>
+                    <div style="margin-top: 6px;"><strong>Ambassador:</strong> {speaker_name}</div>
+                    <div style="margin-top: 6px;"><strong>Status:</strong> Verified Authenticated</div>
+                  </div>
+                  <p style="font-size: 14px; color: #5f6368;">
+                    You can verify this certificate anytime using the official verification link or the embedded QR code.
+                  </p>
+                </div>
+              </div>
+            </body>
+            </html>
+            """
+            msg.attach(MIMEText(html_body, "html"))
+
+            # Attach Certificate Image if provided
+            if image_data and "," in image_data:
+                try:
+                    img_bytes = base64.b64decode(image_data.split(",")[1])
+                    img_part = MIMEImage(img_bytes)
+                    img_part.add_header("Content-Disposition", "attachment", filename=f"Certificate_{cert_id}.png")
+                    msg.attach(img_part)
+                except Exception as img_err:
+                    print("Could not attach image:", img_err)
+
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASS)
+                server.send_message(msg)
+            smtp_sent = True
+        except Exception as e:
+            error_msg = str(e)
+            print(f"SMTP sending failed: {e}")
+
+    # Record dispatch log
+    dispatch_record = {
+        "id": cert_id,
+        "email": to_email,
+        "fullName": full_name,
+        "eventName": event_name,
+        "speakerName": speaker_name,
+        "timestamp": timestamp,
+        "smtpDelivered": smtp_sent,
+        "status": "Sent" if smtp_sent else "Dispatched (System Logged)",
+        "error": error_msg
+    }
+
+    try:
+        logs = []
+        if os.path.exists(DISPATCHED_EMAILS_FILE):
+            try:
+                with open(DISPATCHED_EMAILS_FILE, "r", encoding="utf-8") as f:
+                    logs = json.load(f)
+            except Exception:
+                pass
+        logs.insert(0, dispatch_record)
+        with open(DISPATCHED_EMAILS_FILE, "w", encoding="utf-8") as f:
+            json.dump(logs, f, indent=2)
+    except Exception as e:
+        print("Could not save dispatch log:", e)
+
+    print(f"✉️ [EMAIL DISPATCH] Certificate {cert_id} dispatched to: {to_email} ({'Live SMTP' if smtp_sent else 'Simulated/System Log'})")
+    return {
+        "success": True,
+        "smtpSent": smtp_sent,
+        "email": to_email,
+        "certId": cert_id,
+        "message": f"Certificate has been dispatched to {to_email}."
+    }
+
+# Supabase Credentials
+SUPABASE_URL = "https://sxbnutustirzmesuillx.supabase.co"
+SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4Ym51dHVzdGlyem1lc3VpbGx4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5NDkwNTAxNywiZXhwIjoyMTEwNDgxMDE3fQ.C2vt8FI3NiuCh_8quwMpM9kbA1Xiv-G5BUOejkkvK00"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4Ym51dHVzdGlyem1lc3VpbGx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ5MDUwMTcsImV4cCI6MjExMDQ4MTAxN30.BHThQ6qFOiEo3LWReRbZ38dGq3q8DTZKzSTltAEXaOg"
+
+ADMINS = {
+    "admin1": {
+        "id": "admin1",
+        "name": "ASWIN ASOK KV",
+        "username": "ASWIN ASOK KV",
+        "pass": "Aswin_Achu12",
+        "gid": "14248",
+        "signatureFile": "Aswin Signature.png"
+    },
+    "admin2": {
+        "id": "admin2",
+        "name": "Paulbin Chacko",
+        "username": "Paulbin Chacko",
+        "pass": "Paulbin@2005",
+        "gid": "12348",
+        "signatureFile": "paul_signature_transparent.png"
+    },
+    "admin3": {
+        "id": "admin3",
+        "name": "THOMAS",
+        "username": "THOMAS",
+        "pass": "thomas@2026",
+        "gid": "1443",
+        "signatureFile": "thomas_signature.png"
+    }
+}
+
+# --- Supabase Helpers ---
+def supabase_headers():
+    return {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Content-Type": "application/json"
+    }
+
+def map_db_to_request(row):
+    return {
+        "id": row.get("id"),
+        "fullName": row.get("full_name"),
+        "email": row.get("email"),
+        "college": row.get("college"),
+        "speakerId": row.get("speaker_id"),
+        "speakerName": row.get("speaker_name"),
+        "speakerGid": row.get("speaker_gid"),
+        "eventDate": row.get("event_date", "08/10/2026"),
+        "eventName": row.get("event_name", "Game On: Imagine the Impossible"),
+        "requestDate": row.get("request_date"),
+        "status": row.get("status", "Requested"),
+        "downloadCount": row.get("download_count", 0)
+    }
+
+def map_request_to_db(req):
+    return {
+        "id": req.get("id"),
+        "full_name": req.get("fullName"),
+        "email": req.get("email"),
+        "college": req.get("college"),
+        "speaker_id": req.get("speakerId"),
+        "speaker_name": req.get("speakerName"),
+        "speaker_gid": req.get("speakerGid"),
+        "event_date": req.get("eventDate", "08/10/2026"),
+        "event_name": req.get("eventName", "Game On: Imagine the Impossible"),
+        "request_date": req.get("requestDate"),
+        "status": req.get("status", "Requested"),
+        "download_count": req.get("downloadCount", 0)
+    }
+
+def load_requests():
+    # 1. Try fetching from Supabase
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/certificate_requests?select=*&order=created_at.desc"
+        req = urllib.request.Request(url, headers=supabase_headers())
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            mapped = [map_db_to_request(item) for item in data]
+            # update local backup
+            save_local_requests(mapped)
+            return mapped
+    except Exception as e:
+        print("Warning: Supabase fetch error, using local fallback:", e)
+
+    # 2. Local fallback
+    if os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return []
+
+def save_local_requests(data):
+    try:
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print("Error saving local requests:", e)
+
+def save_request_to_supabase(new_req):
+    # Upsert to Supabase
+    try:
+        db_row = map_request_to_db(new_req)
+        url = f"{SUPABASE_URL}/rest/v1/certificate_requests"
+        headers = supabase_headers()
+        headers["Prefer"] = "resolution=merge-duplicates"
+        req = urllib.request.Request(url, data=json.dumps([db_row]).encode("utf-8"), headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            pass
+    except Exception as e:
+        print("Warning: Could not save to Supabase:", e)
+
+    # Also update local mirror
+    local = []
+    if os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, "r", encoding="utf-8") as f:
+                local = json.load(f)
+        except Exception:
+            pass
+    idx = next((i for i, r in enumerate(local) if r["id"] == new_req["id"]), -1)
+    if idx >= 0:
+        local[idx] = new_req
+    else:
+        local.insert(0, new_req)
+    save_local_requests(local)
+
+def delete_request_from_supabase(req_id):
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/certificate_requests?id=eq.{urllib.parse.quote(req_id)}"
+        req = urllib.request.Request(url, headers=supabase_headers(), method="DELETE")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            pass
+    except Exception as e:
+        print("Warning: Could not delete from Supabase:", e)
+
+    # Also delete from local mirror
+    if os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, "r", encoding="utf-8") as f:
+                local = json.load(f)
+            local = [r for r in local if r["id"] != req_id]
+            save_local_requests(local)
+        except Exception:
+            pass
+
+class CertificateHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=BASE_DIR, **kwargs)
+
+    def _send_json(self, status_code, data):
+        self.send_response(status_code)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode("utf-8"))
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.end_headers()
+
+    def do_GET(self):
+        parsed = urllib.parse.urlparse(self.path)
+        if parsed.path == "/api/requests":
+            requests = load_requests()
+            return self._send_json(200, {"success": True, "requests": requests, "source": "supabase"})
+
+        elif parsed.path == "/api/supabase-config":
+            # Public credentials for direct client connection
+            return self._send_json(200, {
+                "success": True,
+                "supabaseUrl": SUPABASE_URL,
+                "supabaseAnonKey": SUPABASE_ANON_KEY
+            })
+
+        elif parsed.path == "/api/admins":
+            public_admins = [
+                {"id": k, "name": v["name"], "gid": v["gid"], "signatureFile": v["signatureFile"]}
+                for k, v in ADMINS.items()
+            ]
+            return self._send_json(200, {"success": True, "admins": public_admins})
+
+        elif parsed.path.startswith("/api/verify/"):
+            cert_id = parsed.path.replace("/api/verify/", "").strip()
+            requests = load_requests()
+            match = next((r for r in requests if r.get("id", "").lower() == cert_id.lower()), None)
+            if match:
+                return self._send_json(200, {"success": True, "verified": True, "certificate": match})
+            else:
+                return self._send_json(404, {"success": False, "verified": False, "message": "Certificate not found"})
+        else:
+            return super().do_GET()
+
+    def do_POST(self):
+        parsed = urllib.parse.urlparse(self.path)
+        content_length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+        try:
+            payload = json.loads(body)
+        except Exception:
+            payload = {}
+
+        if parsed.path == "/api/login":
+            username = str(payload.get("username", "")).strip().lower()
+            password = str(payload.get("password", "")).strip()
+
+            found_admin = None
+            for key, adm in ADMINS.items():
+                if adm["username"].lower() == username and adm["pass"] == password:
+                    found_admin = adm
+                    break
+
+            if found_admin:
+                return self._send_json(200, {
+                    "success": True,
+                    "admin": {
+                        "id": found_admin["id"],
+                        "name": found_admin["name"],
+                        "gid": found_admin["gid"],
+                        "signatureFile": found_admin["signatureFile"]
+                    },
+                    "token": f"admin_token_{found_admin['id']}_{int(datetime.now().timestamp())}"
+                })
+            else:
+                return self._send_json(401, {"success": False, "message": "Invalid username or password"})
+
+        elif parsed.path == "/api/send-email":
+            to_email = payload.get("email", "").strip()
+            full_name = payload.get("fullName", "").strip()
+            cert_id = payload.get("certId", "").strip()
+            event_name = payload.get("eventName", "Game On: Imagine the Impossible")
+            speaker_name = payload.get("speakerName", "Google Student Ambassador")
+            image_data = payload.get("imageData")
+
+            if not to_email:
+                return self._send_json(400, {"success": False, "message": "Recipient email is required"})
+
+            res = send_certificate_email(to_email, full_name, cert_id, event_name, speaker_name, image_data)
+            return self._send_json(200, res)
+
+        elif parsed.path == "/api/requests":
+            full_name = str(payload.get("fullName", "")).strip()
+            speaker_id = str(payload.get("speakerId", "")).strip()
+
+            if not full_name:
+                return self._send_json(400, {"success": False, "message": "Full Name is required"})
+            if speaker_id not in ADMINS:
+                return self._send_json(400, {"success": False, "message": "Please select a valid Admin speaker"})
+
+            admin_info = ADMINS[speaker_id]
+            req_id = payload.get("id")
+            if not req_id:
+                req_id = f"CERT-2026-{int(datetime.now().timestamp() % 100000):05d}"
+
+            new_req = {
+                "id": req_id,
+                "fullName": full_name,
+                "email": payload.get("email", "").strip(),
+                "college": payload.get("college", "").strip(),
+                "speakerId": speaker_id,
+                "speakerName": admin_info["name"],
+                "speakerGid": admin_info["gid"],
+                "eventDate": payload.get("eventDate", "08/10/2026").strip() or "08/10/2026",
+                "eventName": "Game On: Imagine the Impossible",
+                "requestDate": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "status": payload.get("status", "Requested"),
+                "downloadCount": payload.get("downloadCount", 0)
+            }
+
+            save_request_to_supabase(new_req)
+            return self._send_json(200, {"success": True, "request": new_req})
+
+        elif parsed.path == "/api/requests/status":
+            req_id = payload.get("id")
+            new_status = payload.get("status")
+            inc_download = payload.get("incrementDownload", False)
+
+            requests = load_requests()
+            target = next((r for r in requests if r["id"] == req_id), None)
+            if not target:
+                return self._send_json(404, {"success": False, "message": "Request not found"})
+
+            if new_status:
+                target["status"] = new_status
+            if inc_download:
+                target["downloadCount"] = target.get("downloadCount", 0) + 1
+                if target.get("status") == "Requested":
+                    target["status"] = "Downloaded"
+
+            save_request_to_supabase(target)
+            return self._send_json(200, {"success": True, "request": target})
+
+        elif parsed.path == "/api/requests/delete":
+            req_id = payload.get("id")
+            delete_request_from_supabase(req_id)
+            return self._send_json(200, {"success": True, "message": "Deleted successfully"})
+
+        else:
+            return self._send_json(404, {"success": False, "message": "Endpoint not found"})
+
+if __name__ == "__main__":
+    class ReusableTCPServer(socketserver.TCPServer):
+        allow_reuse_address = True
+
+    with ReusableTCPServer(("", PORT), CertificateHandler) as httpd:
+        print(f"==================================================")
+        print(f" Certificate Generator Server connected to Supabase!")
+        print(f" Supabase Project: {SUPABASE_URL}")
+        print(f" Local Web App: http://localhost:{PORT}")
+        print(f"==================================================")
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("\nShutting down server...")
