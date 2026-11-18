@@ -809,6 +809,17 @@ body {
   border-color: #f5c2c7;
 }
 
+.table-action-btn.email {
+  color: #1a73e8;
+  border-color: #c2e7ff;
+}
+
+.table-action-btn.email:hover {
+  background: #e8f0fe;
+  color: #174ea6;
+  border-color: #1a73e8;
+}
+
 /* Modal */
 .modal-overlay {
   display: none;

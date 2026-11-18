@@ -13,7 +13,7 @@ A complete, dual-portal web application for requesting, generating, verifying, a
   * **Session Taken By (Mandatory Admin Selection):**
     * **Admin 1:** `ASWIN ASOK KV` (GID: 14248)
     * **Admin 2:** `Paulbin Chacko` (GID: 12348)
-    * **Admin 3:** `THOMAS` (GID: 1443)
+    * **Admin 3:** `THOMAS` (GID: 14434)
   * Event / Session Date (defaults to `08/10/2026`).
 * **Pixel-Perfect Certificate Canvas Preview:**
   * Exact replica of the official reference template with Google logo, colorful GSA emblem, award ribbon badge, title card with rainbow underline, and cute Google doodles.

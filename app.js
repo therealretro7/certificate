@@ -154,8 +154,8 @@ const ADMIN_CONFIG = {
     displayName: "THOMAS",
     username: "THOMAS",
     pass: "thomas@2026",
-    gid: "1443",
-    signatureFile: "thomas_signature.png",
+    gid: "14434",
+    signatureFile: "th.jpeg",
     email: "thomaspd737@gmail.com",
     initial: "T",
     color: "#ea4335"
@@ -594,11 +594,14 @@ async function handleCertificateRequest() {
 
   // 2. Dispatch certificate email via backend API
   let emailDispatched = false;
+  let senderEmailUsed = null;
+  let dispatchError = null;
+
   try {
     let certImageBase64 = null;
     try {
-      // Export canvas (lower quality 0.85 to keep payload fast and snappy)
-      certImageBase64 = elements.certificateCanvas.toDataURL("image/png", 0.85);
+      // Export canvas as JPEG (0.88 quality, ~200-300KB) for fast, snappy network delivery
+      certImageBase64 = elements.certificateCanvas.toDataURL("image/jpeg", 0.88);
     } catch (canvasErr) {
       console.warn("Canvas export fallback (e.g. file:// taint):", canvasErr);
     }
@@ -621,10 +624,20 @@ async function handleCertificateRequest() {
         imageData: certImageBase64
       })
     });
+
     if (resp.ok) {
-      emailDispatched = true;
+      const data = await resp.json();
+      if (data.smtpSent) {
+        emailDispatched = true;
+        senderEmailUsed = data.sender;
+      } else {
+        dispatchError = data.error || "Logged without live SMTP";
+      }
+    } else {
+      dispatchError = `Server returned HTTP ${resp.status}`;
     }
   } catch (err) {
+    dispatchError = "Backend server not responding on port 8000";
     console.warn("Email API call failed, saved to Supabase:", err);
   }
 
@@ -636,7 +649,13 @@ async function handleCertificateRequest() {
     elements.emailSentNotification.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
-  showToast(`Certificate requested! Emailed to ${email} ✉️`);
+  if (emailDispatched) {
+    showToast(`Certificate requested! Emailed from ${senderEmailUsed} to ${email} ✉️`);
+  } else if (dispatchError) {
+    showToast(`Saved to database! Note: Email delivery warning (${dispatchError})`, 6000);
+  } else {
+    showToast(`Certificate requested! Emailed to ${email} ✉️`);
+  }
 }
 
 // Download High-Resolution PNG
@@ -1014,6 +1033,9 @@ function renderRequestsTable() {
         <button class="table-action-btn" title="View Certificate" onclick="openPreviewModal('${r.id}')">
           View
         </button>
+        <button class="table-action-btn email" title="Resend Certificate via Email" onclick="resendRequestEmail('${r.id}')">
+          Resend ✉️
+        </button>
         <button class="table-action-btn" title="Approve Request" onclick="toggleRequestStatus('${r.id}')">
           ${r.status === "Approved" ? "Unapprove" : "Approve"}
         </button>
@@ -1128,4 +1150,296 @@ function escapeHtml(text) {
     }
   });
 }
+
+// --- Admin Portal GID, Signature, Template & Test Email Handlers ---
+
+// Sync custom GIDs and signatures from backend server upon loading
+async function syncAdminSettingsFromServer() {
+  try {
+    const apiUrl = (window.location.protocol && window.location.protocol.startsWith("http"))
+      ? `${window.location.origin}/api/admin/settings`
+      : "http://localhost:8000/api/admin/settings";
+
+    const resp = await fetch(apiUrl);
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.admins) {
+        for (const k in data.admins) {
+          if (ADMIN_CONFIG[k]) {
+            if (data.admins[k].gid) ADMIN_CONFIG[k].gid = data.admins[k].gid;
+            if (data.admins[k].signatureFile) ADMIN_CONFIG[k].signatureFile = data.admins[k].signatureFile;
+            if (data.admins[k].email) ADMIN_CONFIG[k].email = data.admins[k].email;
+
+            const gidInput = document.getElementById(`adminGidInput_${k}`);
+            if (gidInput) gidInput.value = ADMIN_CONFIG[k].gid;
+
+            const sigFilename = document.getElementById(`sigFilename_${k}`);
+            if (sigFilename) sigFilename.textContent = ADMIN_CONFIG[k].signatureFile;
+
+            const preview = document.getElementById(`adminSigPreview_${k}`);
+            if (preview && ADMIN_CONFIG[k].signatureFile) preview.src = ADMIN_CONFIG[k].signatureFile;
+
+            const cardTag = document.querySelector(`#cardSpeaker${k.charAt(0).toUpperCase() + k.slice(1)} .speaker-gid-tag`);
+            if (cardTag) cardTag.textContent = `GID: ${ADMIN_CONFIG[k].gid}`;
+          }
+        }
+        renderCertificate();
+      }
+    }
+  } catch (err) {
+    // Server offline or starting up
+  }
+}
+
+// 1. Update GID for an Ambassador
+window.handleSaveGid = async function (speakerId) {
+  const input = document.getElementById(`adminGidInput_${speakerId}`);
+  if (!input) return;
+  const newGid = input.value.trim();
+  if (!newGid) {
+    showToast("Please enter a valid GID number");
+    return;
+  }
+
+  try {
+    const apiUrl = (window.location.protocol && window.location.protocol.startsWith("http"))
+      ? `${window.location.origin}/api/admin/update-speaker`
+      : "http://localhost:8000/api/admin/update-speaker";
+
+    const resp = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ speakerId, gid: newGid })
+    });
+
+    if (resp.ok) {
+      if (ADMIN_CONFIG[speakerId]) ADMIN_CONFIG[speakerId].gid = newGid;
+
+      const cardTag = document.querySelector(`#cardSpeaker${speakerId.charAt(0).toUpperCase() + speakerId.slice(1)} .speaker-gid-tag`);
+      if (cardTag) cardTag.textContent = `GID: ${newGid}`;
+
+      renderCertificate();
+      showToast(`GID updated to ${newGid} for ${ADMIN_CONFIG[speakerId]?.name || speakerId} ✅`);
+    } else {
+      const err = await resp.json();
+      showToast(`Could not update GID: ${err.message || 'Server error'}`);
+    }
+  } catch (err) {
+    if (ADMIN_CONFIG[speakerId]) ADMIN_CONFIG[speakerId].gid = newGid;
+    renderCertificate();
+    showToast(`GID updated to ${newGid} (Client cached)`);
+  }
+};
+
+// 2. Upload New Signature for an Ambassador
+window.handleSignatureUpload = async function (speakerId) {
+  const fileInput = document.getElementById(`sigFileInput_${speakerId}`);
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) return;
+
+  const file = fileInput.files[0];
+  if (!file.type.startsWith("image/")) {
+    showToast("Please select an image file (.png, .jpg, .jpeg)");
+    return;
+  }
+
+  showToast(`Uploading signature for ${ADMIN_CONFIG[speakerId]?.name || speakerId}... ⏳`);
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const base64Data = e.target.result;
+    try {
+      const apiUrl = (window.location.protocol && window.location.protocol.startsWith("http"))
+        ? `${window.location.origin}/api/admin/upload-signature`
+        : "http://localhost:8000/api/admin/upload-signature";
+
+      const resp = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          speakerId,
+          filename: file.name,
+          imageData: base64Data
+        })
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        const savedFilename = data.signatureFile;
+
+        if (ADMIN_CONFIG[speakerId]) {
+          ADMIN_CONFIG[speakerId].signatureFile = savedFilename;
+        }
+
+        const previewImg = document.getElementById(`adminSigPreview_${speakerId}`);
+        if (previewImg) previewImg.src = base64Data;
+        const filenameLabel = document.getElementById(`sigFilename_${speakerId}`);
+        if (filenameLabel) filenameLabel.textContent = savedFilename;
+
+        const img = new Image();
+        img.onload = () => {
+          state.loadedImages[`${speakerId}Sig`] = img;
+          renderCertificate();
+          showToast(`Signature uploaded and applied for ${ADMIN_CONFIG[speakerId]?.name || speakerId} 🖋️`);
+        };
+        img.src = base64Data;
+      } else {
+        const err = await resp.json();
+        showToast(`Signature upload failed: ${err.message || 'Server error'}`);
+      }
+    } catch (err) {
+      console.warn("Upload API error, using client base64:", err);
+      const img = new Image();
+      img.onload = () => {
+        state.loadedImages[`${speakerId}Sig`] = img;
+        renderCertificate();
+        showToast(`Signature applied to live certificate!`);
+      };
+      img.src = base64Data;
+      const previewImg = document.getElementById(`adminSigPreview_${speakerId}`);
+      if (previewImg) previewImg.src = base64Data;
+    }
+  };
+  reader.readAsDataURL(file);
+};
+
+// 3. Upload New Certificate Template
+window.handleTemplateUpload = async function () {
+  const fileInput = document.getElementById("templateFileInput");
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) return;
+
+  const file = fileInput.files[0];
+  if (!file.type.startsWith("image/")) {
+    showToast("Please select a valid image file for the template");
+    return;
+  }
+
+  showToast("Uploading new master certificate template... ⏳");
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const base64Data = e.target.result;
+    try {
+      const apiUrl = (window.location.protocol && window.location.protocol.startsWith("http"))
+        ? `${window.location.origin}/api/admin/upload-template`
+        : "http://localhost:8000/api/admin/upload-template";
+
+      const resp = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          imageData: base64Data
+        })
+      });
+
+      if (resp.ok) {
+        const thumb = document.getElementById("adminTemplateThumb");
+        if (thumb) thumb.src = base64Data;
+
+        const img = new Image();
+        img.onload = () => {
+          state.loadedImages.template = img;
+          renderCertificate();
+          showToast("Master certificate template updated and applied! 🖼️");
+        };
+        img.src = base64Data;
+      } else {
+        const err = await resp.json();
+        showToast(`Template upload error: ${err.message || 'Server error'}`);
+      }
+    } catch (err) {
+      console.warn("Template upload failed, applying locally:", err);
+      const img = new Image();
+      img.onload = () => {
+        state.loadedImages.template = img;
+        renderCertificate();
+        showToast("Template applied to live canvas (Local Preview)!");
+      };
+      img.src = base64Data;
+    }
+  };
+  reader.readAsDataURL(file);
+};
+
+// 4. Resend Certificate Email
+window.resendRequestEmail = async function (certId) {
+  const req = state.requests.find((r) => r.id === certId);
+  if (!req) return;
+
+  const targetEmail = req.email || prompt("Enter recipient email address:", "");
+  if (!targetEmail || !targetEmail.includes("@")) {
+    showToast("Valid recipient email is required");
+    return;
+  }
+
+  showToast(`Resending certificate ${certId} to ${targetEmail}... ✉️`);
+
+  try {
+    const apiUrl = (window.location.protocol && window.location.protocol.startsWith("http"))
+      ? `${window.location.origin}/api/admin/resend-email`
+      : "http://localhost:8000/api/admin/resend-email";
+
+    const resp = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ certId, email: targetEmail })
+    });
+
+    if (resp.ok) {
+      const result = await resp.json();
+      if (result.smtpSent) {
+        req.status = "Email Sent";
+        await sbUpsertRequest(req);
+        renderRequestsTable();
+        showToast(`Certificate ${certId} sent successfully via ${result.sender} ✉️`);
+      } else {
+        showToast(`Email could not be delivered: ${result.error || 'Server error'}`, 6000);
+      }
+    } else {
+      const err = await resp.json();
+      showToast(`Resend failed: ${err.message || 'Server error'}`);
+    }
+  } catch (err) {
+    showToast("Backend server offline. Please run start_portal.bat ⚠️", 6000);
+  }
+};
+
+// 5. Send Diagnostic Test Email from an Ambassador's account
+window.handleTestEmail = async function (speakerId) {
+  const adm = ADMIN_CONFIG[speakerId] || ADMIN_CONFIG.admin1;
+  const defaultRecipient = adm.email || "aswinashokkv@gmail.com";
+  const toEmail = prompt(`Send diagnostic test email from ${adm.name} (${adm.email}) to:`, defaultRecipient);
+  if (!toEmail || !toEmail.includes("@")) return;
+
+  showToast(`Sending test delivery from ${adm.name} via ${adm.email}... ⏳`);
+
+  try {
+    const apiUrl = (window.location.protocol && window.location.protocol.startsWith("http"))
+      ? `${window.location.origin}/api/admin/test-email`
+      : "http://localhost:8000/api/admin/test-email";
+
+    const resp = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ speakerId, toEmail })
+    });
+
+    if (resp.ok) {
+      const res = await resp.json();
+      if (res.smtpSent) {
+        showToast(`Diagnostic email successfully sent from ${res.sender} to ${toEmail}! ✉️`);
+      } else {
+        showToast(`SMTP test failed: ${res.error || 'Authentication error'}`, 7000);
+      }
+    } else {
+      const err = await resp.json();
+      showToast(`Test failed: ${err.message || 'Server error'}`);
+    }
+  } catch (err) {
+    showToast("Server offline: ensure start_portal.bat is running on port 8000 ⚠️", 6000);
+  }
+};
+
+// Call sync on startup
+setTimeout(syncAdminSettingsFromServer, 1000);
 

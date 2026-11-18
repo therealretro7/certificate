@@ -24,7 +24,7 @@ $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
 $speakers = @{
     "admin1" = @{ name = "ASWIN ASOK KV"; gid = "14248"; sig = "Aswin Signature.png" }
     "admin2" = @{ name = "Paulbin Chacko"; gid = "12348"; sig = "paul_signature_transparent.png" }
-    "admin3" = @{ name = "THOMAS"; gid = "1443"; sig = "thomas_signature.png" }
+    "admin3" = @{ name = "THOMAS"; gid = "14434"; sig = "th.jpeg" }
 }
 
 $sp = $speakers[$speakerId]

@@ -1,0 +1,22 @@
+{
+  "admins": {
+    "admin1": {
+      "gid": "14248",
+      "signatureFile": "Aswin Signature.png",
+      "email": "aswinashokkv@gmail.com",
+      "name": "ASWIN ASOK KV"
+    },
+    "admin2": {
+      "gid": "12348",
+      "signatureFile": "paul_signature_transparent.png",
+      "email": "chackopaulbin@gmail.com",
+      "name": "Paulbin Chacko"
+    },
+    "admin3": {
+      "gid": "14434",
+      "signatureFile": "th.jpeg",
+      "email": "thomaspd737@gmail.com",
+      "name": "THOMAS"
+    }
+  }
+}

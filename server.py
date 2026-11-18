@@ -146,7 +146,7 @@ def send_certificate_email(to_email, full_name, cert_id, event_name, speaker_nam
                     subprocess.run([
                         "powershell", "-ExecutionPolicy", "Bypass", "-File", script_path,
                         full_name, event_date, speaker_id, rendered_path
-                    ], capture_output=True, timeout=10)
+                    ], capture_output=True, timeout=25)
                     if os.path.exists(rendered_path):
                         with open(rendered_path, "rb") as f:
                             img_part = MIMEImage(f.read())
@@ -237,11 +237,62 @@ ADMINS = {
         "name": "THOMAS",
         "username": "THOMAS",
         "pass": "thomas@2026",
-        "gid": "1443",
-        "signatureFile": "thomas_signature.png",
+        "gid": "14434",
+        "signatureFile": "th.jpeg",
         "email": "thomaspd737@gmail.com"
     }
 }
+
+# --- Persistent Settings & Asset Sync ---
+SETTINGS_FILE = os.path.join(BASE_DIR, "admin_settings.json")
+
+def load_admin_settings():
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                settings = json.load(f)
+                if "admins" in settings:
+                    for k, v in settings["admins"].items():
+                        if k in ADMINS:
+                            ADMINS[k].update(v)
+        except Exception as e:
+            print("Could not load admin_settings.json:", e)
+
+def save_admin_settings():
+    try:
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump({
+                "admins": {
+                    k: {
+                        "gid": v.get("gid"),
+                        "signatureFile": v.get("signatureFile"),
+                        "email": v.get("email"),
+                        "name": v.get("name")
+                    } for k, v in ADMINS.items()
+                }
+            }, f, indent=2)
+    except Exception as e:
+        print("Could not save admin_settings.json:", e)
+
+def sync_ps1_config():
+    ps1_path = os.path.join(BASE_DIR, "render_cert_service.ps1")
+    if not os.path.exists(ps1_path):
+        return
+    try:
+        with open(ps1_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        import re
+        for k, v in ADMINS.items():
+            pattern = rf'"{k}"\s*=\s*@\{{[^}}]*\}}'
+            replacement = f'"{k}" = @{{ name = "{v["name"]}"; gid = "{v["gid"]}"; sig = "{v["signatureFile"]}" }}'
+            content = re.sub(pattern, replacement, content)
+        with open(ps1_path, "w", encoding="utf-8") as f:
+            f.write(content)
+    except Exception as e:
+        print("Could not sync render_cert_service.ps1:", e)
+
+# Load saved settings upon startup
+load_admin_settings()
 
 # --- Supabase Helpers ---
 def supabase_headers():
@@ -396,10 +447,31 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
 
         elif parsed.path == "/api/admins":
             public_admins = [
-                {"id": k, "name": v["name"], "gid": v["gid"], "signatureFile": v["signatureFile"]}
+                {"id": k, "name": v["name"], "gid": v["gid"], "signatureFile": v["signatureFile"], "email": v.get("email", "")}
                 for k, v in ADMINS.items()
             ]
             return self._send_json(200, {"success": True, "admins": public_admins})
+
+        elif parsed.path == "/api/admin/settings":
+            return self._send_json(200, {
+                "success": True,
+                "admins": {
+                    k: {
+                        "id": v["id"],
+                        "name": v["name"],
+                        "gid": v["gid"],
+                        "signatureFile": v["signatureFile"],
+                        "email": v.get("email", "")
+                    } for k, v in ADMINS.items()
+                },
+                "template": "template_clean_2x.png",
+                "templateExists": os.path.exists(os.path.join(BASE_DIR, "template_clean_2x.png")),
+                "smtpStatus": {
+                    "admin1": {"user": DEFAULT_SMTP_USER, "active": bool(DEFAULT_SMTP_USER and DEFAULT_SMTP_PASS)},
+                    "admin2": {"user": PAULBIN_SMTP_USER, "active": bool(PAULBIN_SMTP_USER and PAULBIN_SMTP_PASS)},
+                    "admin3": {"user": THOMAS_SMTP_USER, "active": bool(THOMAS_SMTP_USER and THOMAS_SMTP_PASS)}
+                }
+            })
 
         elif parsed.path.startswith("/api/verify/"):
             cert_id = parsed.path.replace("/api/verify/", "").strip()
@@ -517,6 +589,141 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
             req_id = payload.get("id")
             delete_request_from_supabase(req_id)
             return self._send_json(200, {"success": True, "message": "Deleted successfully"})
+
+        elif parsed.path == "/api/admin/update-speaker":
+            speaker_id = str(payload.get("speakerId", "")).strip()
+            if speaker_id not in ADMINS:
+                return self._send_json(400, {"success": False, "message": "Invalid speakerId"})
+            
+            gid = str(payload.get("gid", "")).strip()
+            if gid:
+                ADMINS[speaker_id]["gid"] = gid
+            
+            name = str(payload.get("name", "")).strip()
+            if name:
+                ADMINS[speaker_id]["name"] = name
+                ADMINS[speaker_id]["username"] = name
+
+            email = str(payload.get("email", "")).strip()
+            if email:
+                ADMINS[speaker_id]["email"] = email
+
+            save_admin_settings()
+            sync_ps1_config()
+            return self._send_json(200, {
+                "success": True,
+                "speaker": {
+                    "id": speaker_id,
+                    "name": ADMINS[speaker_id]["name"],
+                    "gid": ADMINS[speaker_id]["gid"],
+                    "signatureFile": ADMINS[speaker_id]["signatureFile"],
+                    "email": ADMINS[speaker_id].get("email", "")
+                },
+                "message": f"Updated {ADMINS[speaker_id]['name']} (GID: {ADMINS[speaker_id]['gid']})"
+            })
+
+        elif parsed.path == "/api/admin/upload-signature":
+            speaker_id = str(payload.get("speakerId", "")).strip()
+            if speaker_id not in ADMINS:
+                return self._send_json(400, {"success": False, "message": "Invalid speakerId"})
+
+            image_data = payload.get("imageData", "")
+            raw_filename = payload.get("filename", "").strip() or f"{speaker_id}_sig.png"
+            filename = os.path.basename(raw_filename)
+            if not filename:
+                filename = f"{speaker_id}_sig.png"
+
+            if not image_data or "," not in image_data:
+                return self._send_json(400, {"success": False, "message": "Invalid image payload"})
+
+            try:
+                img_bytes = base64.b64decode(image_data.split(",")[1])
+                target_path = os.path.join(BASE_DIR, filename)
+                with open(target_path, "wb") as f:
+                    f.write(img_bytes)
+
+                ADMINS[speaker_id]["signatureFile"] = filename
+                save_admin_settings()
+                sync_ps1_config()
+
+                return self._send_json(200, {
+                    "success": True,
+                    "speakerId": speaker_id,
+                    "signatureFile": filename,
+                    "message": f"Signature updated to {filename} for {ADMINS[speaker_id]['name']}"
+                })
+            except Exception as e:
+                return self._send_json(500, {"success": False, "message": f"Could not save signature: {e}"})
+
+        elif parsed.path == "/api/admin/upload-template":
+            image_data = payload.get("imageData", "")
+            target_filename = "template_clean_2x.png"
+
+            if not image_data or "," not in image_data:
+                return self._send_json(400, {"success": False, "message": "Invalid image payload"})
+
+            try:
+                img_bytes = base64.b64decode(image_data.split(",")[1])
+                target_path = os.path.join(BASE_DIR, target_filename)
+                with open(target_path, "wb") as f:
+                    f.write(img_bytes)
+
+                return self._send_json(200, {
+                    "success": True,
+                    "templateFile": target_filename,
+                    "message": "Certificate template updated successfully!"
+                })
+            except Exception as e:
+                return self._send_json(500, {"success": False, "message": f"Could not save template: {e}"})
+
+        elif parsed.path == "/api/admin/resend-email":
+            cert_id = str(payload.get("certId", "")).strip()
+            override_email = str(payload.get("email", "")).strip()
+
+            if not cert_id:
+                return self._send_json(400, {"success": False, "message": "Certificate ID is required"})
+
+            requests = load_requests()
+            req = next((r for r in requests if r.get("id", "").lower() == cert_id.lower()), None)
+            if not req:
+                return self._send_json(404, {"success": False, "message": f"Request {cert_id} not found"})
+
+            to_email = override_email or req.get("email")
+            if not to_email:
+                return self._send_json(400, {"success": False, "message": "No email address found for this certificate"})
+
+            full_name = req.get("fullName", "Participant")
+            event_name = req.get("eventName", "Game On: Imagine the Impossible")
+            speaker_name = req.get("speakerName", "Google Student Ambassador")
+            speaker_id = req.get("speakerId", "admin1")
+            event_date = req.get("eventDate", "08/10/2026")
+
+            res = send_certificate_email(to_email, full_name, cert_id, event_name, speaker_name, speaker_id, event_date)
+            if res.get("smtpSent"):
+                req["status"] = "Email Sent"
+                save_request_to_supabase(req)
+
+            return self._send_json(200, res)
+
+        elif parsed.path == "/api/admin/test-email":
+            speaker_id = str(payload.get("speakerId", "admin1")).strip()
+            to_email = str(payload.get("toEmail", "")).strip()
+
+            if not to_email:
+                return self._send_json(400, {"success": False, "message": "Recipient test email is required"})
+
+            adm = ADMINS.get(speaker_id, ADMINS["admin1"])
+            test_cert_id = f"TEST-{int(datetime.now().timestamp() % 10000)}"
+            res = send_certificate_email(
+                to_email=to_email,
+                full_name="Ambassador Test Delivery",
+                cert_id=test_cert_id,
+                event_name="Diagnostic SMTP Delivery Test",
+                speaker_name=adm["name"],
+                speaker_id=speaker_id,
+                event_date=datetime.now().strftime("%d/%m/%Y")
+            )
+            return self._send_json(200, res)
 
         else:
             return self._send_json(404, {"success": False, "message": "Endpoint not found"})
