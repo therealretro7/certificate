@@ -13,7 +13,7 @@ A complete, dual-portal web application for requesting, generating, verifying, a
   * **Session Taken By (Mandatory Admin Selection):**
     * **Admin 1:** `ASWIN ASOK KV` (GID: 14248)
     * **Admin 2:** `Paulbin Chacko` (GID: 12348)
-    * **Admin 3:** `THOMAS PD` (GID: 14434)
+    * **Admin 3:** `THOMAS P D` (GID: 14434)
   * Event / Session Date (defaults to `08/10/2026`).
 * **Pixel-Perfect Certificate Canvas Preview:**
   * Exact replica of the official reference template with Google logo, colorful GSA emblem, award ribbon badge, title card with rainbow underline, and cute Google doodles.
@@ -22,7 +22,7 @@ A complete, dual-portal web application for requesting, generating, verifying, a
   * Individual digital signatures assigned per speaker:
     * Aswin Asok KV: `Aswin Signature.png`
     * Paulbin Chacko: `paul_signature_transparent.png`
-    * Thomas PD: `th.jpeg`
+    * Thomas P D: `th.jpeg`
   * Dynamic **GID** in the bottom-right corner (`GID:14248`, `GID:12348`, or `GID:14434`).
 * **High-Definition Downloads:**
   * **Download PNG (High-Res):** Crystal clear 1892 x 1064 resolution image.
@@ -41,7 +41,7 @@ A complete, dual-portal web application for requesting, generating, verifying, a
 * **Access Control:** Restricted strictly to the 3 authorized admins:
   * **Admin 1:** Username: `ASWIN ASOK KV` | Password: `Aswin_Achu12` | GID: `14248`
   * **Admin 2:** Username: `Paulbin Chacko` | Password: `Paulbin@2005` | GID: `12348`
-  * **Admin 3:** Username: `THOMAS PD` | Password: `thomas@2026` | GID: `14434`
+  * **Admin 3:** Username: `THOMAS P D` | Password: `thomas@2026` | GID: `14434`
 * **Admin Dashboard & Management:**
   * **Real-time Metrics:** Total Requests, My Session Requests (filtered to the logged-in admin), Pending Reviews, and Total Certificates Downloaded.
   * **Request Tracking Table:** Full table of all requesters with their name, email, college, chosen session speaker, status, and download counter.

@@ -164,9 +164,9 @@ const ADMIN_CONFIG = {
   },
   admin3: {
     id: "admin3",
-    name: "THOMAS PD",
-    displayName: "THOMAS PD",
-    username: "THOMAS PD",
+    name: "THOMAS P D",
+    displayName: "THOMAS P D",
+    username: "THOMAS P D",
     pass: "thomas@2026",
     gid: "14434",
     signatureFile: "th.jpeg",
@@ -897,7 +897,7 @@ async function attemptAdminLogin(username, password) {
   for (const key in ADMIN_CONFIG) {
     const adm = ADMIN_CONFIG[key];
     const userMatches = adm.username.toLowerCase() === normalizedUser || 
-                        (key === "admin3" && (normalizedUser === "thomas" || normalizedUser === "thomas pd"));
+                        (key === "admin3" && (normalizedUser === "thomas" || normalizedUser === "thomas pd" || normalizedUser === "thomas p d"));
     if (userMatches && adm.pass === password) {
       matchedAdmin = adm;
       break;
