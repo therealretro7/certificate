@@ -357,6 +357,40 @@
           </div>
         </div>
 
+        <!-- Logged-in Admin Session Key Quick-Control Banner -->
+        <div id="adminMyKeyBanner" class="card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, #f8fafd 0%, #edf2fc 100%); border: 1.5px solid #c2e7ff; padding: 1.15rem 1.4rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                <span style="font-size: 1.3rem;">🔑</span>
+                <h3 style="font-size: 1.05rem; font-weight: 700; color: #1a73e8; margin: 0;">
+                  Your Session Key (Attendance Verification Gate)
+                </h3>
+                <span id="myAdminSpeakerBadge" style="font-size: 0.72rem; background: #1a73e8; color: white; padding: 0.2rem 0.55rem; border-radius: 12px; font-weight: 600;">
+                  ASWIN ASOK KV
+                </span>
+              </div>
+              <p style="font-size: 0.84rem; color: #5f6368; margin: 0; line-height: 1.4;">
+                Attendees must enter this key to request and download certificates. You can set a custom key or generate a new one anytime:
+              </p>
+            </div>
+
+            <!-- Quick Key Set Input Group -->
+            <div style="display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;">
+              <input type="text" id="quickSessionKeyInput" style="font-family: monospace; font-size: 0.95rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; padding: 0.55rem 0.85rem; border: 2px solid #1a73e8; border-radius: 6px; width: 190px; background: white;" placeholder="SET KEY">
+              <button class="nav-btn-primary" id="btnQuickSaveKey" onclick="handleQuickSaveSessionKey()" style="padding: 0.55rem 1rem; font-size: 0.84rem; font-weight: 600; border: none; cursor: pointer; border-radius: 6px;" title="Save new key for attendees">
+                Save Key 💾
+              </button>
+              <button class="btn-secondary" onclick="handleGenerateRandomKey()" style="padding: 0.55rem 0.75rem; font-size: 0.82rem; font-weight: 600; border-radius: 6px;" title="Generate random key">
+                🎲 Random
+              </button>
+              <button class="btn-secondary" onclick="handleCopyMyKey()" style="padding: 0.55rem 0.75rem; font-size: 0.82rem; font-weight: 600; border-radius: 6px;" title="Copy key to clipboard">
+                📋 Copy
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Stats Overview Cards -->
         <div class="admin-stats-grid">
           <div class="stat-card">

@@ -1073,6 +1073,18 @@ function updateAdminView() {
     elements.adminNameDisplay.textContent = state.currentAdmin.name;
     elements.adminAvatarInitial.textContent = state.currentAdmin.initial;
     elements.adminAvatarInitial.style.background = state.currentAdmin.color;
+
+    // Update Quick Session Key Banner for logged-in admin
+    const quickInput = document.getElementById("quickSessionKeyInput");
+    const badge = document.getElementById("myAdminSpeakerBadge");
+    if (quickInput) {
+      quickInput.value = ADMIN_CONFIG[state.currentAdmin.id]?.sessionKey || "";
+    }
+    if (badge) {
+      badge.textContent = state.currentAdmin.name;
+      badge.style.background = state.currentAdmin.color || "#1a73e8";
+    }
+
     // Reload fresh from Supabase each time admin opens dashboard
     loadRequests().then(() => {
       updateAdminStats();
@@ -1411,10 +1423,10 @@ window.handleSaveGid = async function (speakerId) {
 };
 
 // 2. Update Session Key for an Ambassador
-window.handleSaveSessionKey = async function (speakerId) {
+window.handleSaveSessionKey = async function (speakerId, overrideKey = null) {
   const input = document.getElementById(`adminSessionKeyInput_${speakerId}`);
-  if (!input) return;
-  const newKey = input.value.trim().toUpperCase();
+  const quickInput = document.getElementById("quickSessionKeyInput");
+  const newKey = (overrideKey !== null ? overrideKey : (input ? input.value : "")).trim().toUpperCase();
   if (!newKey) {
     showToast("Please enter a valid session key (e.g. GSA-ASWIN-2026)");
     return;
@@ -1430,7 +1442,10 @@ window.handleSaveSessionKey = async function (speakerId) {
 
     if (resp.ok) {
       if (ADMIN_CONFIG[speakerId]) ADMIN_CONFIG[speakerId].sessionKey = newKey;
-      input.value = newKey;
+      if (input) input.value = newKey;
+      if (quickInput && state.currentAdmin && state.currentAdmin.id === speakerId) {
+        quickInput.value = newKey;
+      }
       validateSessionKeyUI();
       showToast(`Session Key updated to "${newKey}" for ${ADMIN_CONFIG[speakerId]?.name || speakerId} 🔑✅`);
     } else {
@@ -1439,10 +1454,55 @@ window.handleSaveSessionKey = async function (speakerId) {
     }
   } catch (err) {
     if (ADMIN_CONFIG[speakerId]) ADMIN_CONFIG[speakerId].sessionKey = newKey;
-    input.value = newKey;
+    if (input) input.value = newKey;
+    if (quickInput && state.currentAdmin && state.currentAdmin.id === speakerId) {
+      quickInput.value = newKey;
+    }
     validateSessionKeyUI();
     showToast(`Session Key updated to "${newKey}" (Client cached) 🔑`);
   }
+};
+
+// Quick-Save Session Key from Top Admin Banner
+window.handleQuickSaveSessionKey = async function () {
+  if (!state.currentAdmin) {
+    showToast("Please log in to set your session key");
+    return;
+  }
+  const input = document.getElementById("quickSessionKeyInput");
+  if (!input) return;
+  const newKey = input.value.trim().toUpperCase();
+  if (!newKey) {
+    showToast("Please enter a valid session key");
+    return;
+  }
+  await window.handleSaveSessionKey(state.currentAdmin.id, newKey);
+};
+
+// Generate Random Key for Logged-In Admin
+window.handleGenerateRandomKey = function () {
+  if (!state.currentAdmin) return;
+  const firstName = (state.currentAdmin.name.split(" ")[0] || "GSA").toUpperCase();
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  const generated = `${firstName}-${randomNum}`;
+  const input = document.getElementById("quickSessionKeyInput");
+  if (input) input.value = generated;
+  showToast(`🎲 Generated key "${generated}". Click "Save Key 💾" to activate!`);
+};
+
+// Copy Logged-In Admin's Key to Clipboard
+window.handleCopyMyKey = function () {
+  if (!state.currentAdmin) return;
+  const key = ADMIN_CONFIG[state.currentAdmin.id]?.sessionKey || document.getElementById("quickSessionKeyInput")?.value || "";
+  if (!key) {
+    showToast("No active key to copy");
+    return;
+  }
+  navigator.clipboard.writeText(key).then(() => {
+    showToast(`📋 Copied your session key "${key}" to clipboard! Distribute this to your attendees.`);
+  }).catch(() => {
+    showToast(`Your session key: ${key}`);
+  });
 };
 
 // 3. Copy Session Key to Clipboard
