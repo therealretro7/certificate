@@ -420,7 +420,8 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+        self.send_header("Access-Control-Allow-Private-Network", "true")
         self.end_headers()
         self.wfile.write(json.dumps(data).encode("utf-8"))
 
@@ -428,16 +429,23 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+        self.send_header("Access-Control-Allow-Private-Network", "true")
         self.end_headers()
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
-        if parsed.path == "/api/requests":
+        path = parsed.path.rstrip("/")
+        if path.startswith("/certificate"):
+            path = path[len("/certificate"):]
+        if not path:
+            path = "/"
+
+        if path == "/api/requests":
             requests = load_requests()
             return self._send_json(200, {"success": True, "requests": requests, "source": "supabase"})
 
-        elif parsed.path == "/api/supabase-config":
+        elif path == "/api/supabase-config":
             # Public credentials for direct client connection
             return self._send_json(200, {
                 "success": True,
@@ -445,14 +453,14 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
                 "supabaseAnonKey": SUPABASE_ANON_KEY
             })
 
-        elif parsed.path == "/api/admins":
+        elif path == "/api/admins":
             public_admins = [
                 {"id": k, "name": v["name"], "gid": v["gid"], "signatureFile": v["signatureFile"], "email": v.get("email", "")}
                 for k, v in ADMINS.items()
             ]
             return self._send_json(200, {"success": True, "admins": public_admins})
 
-        elif parsed.path == "/api/admin/settings":
+        elif path == "/api/admin/settings":
             return self._send_json(200, {
                 "success": True,
                 "admins": {
@@ -473,8 +481,8 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
                 }
             })
 
-        elif parsed.path.startswith("/api/verify/"):
-            cert_id = parsed.path.replace("/api/verify/", "").strip()
+        elif path.startswith("/api/verify/"):
+            cert_id = path.replace("/api/verify/", "").strip()
             requests = load_requests()
             match = next((r for r in requests if r.get("id", "").lower() == cert_id.lower()), None)
             if match:
@@ -486,6 +494,10 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path.rstrip("/")
+        if path.startswith("/certificate"):
+            path = path[len("/certificate"):]
+
         content_length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
         try:
@@ -493,7 +505,7 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
         except Exception:
             payload = {}
 
-        if parsed.path == "/api/login":
+        if path == "/api/login":
             username = str(payload.get("username", "")).strip().lower()
             password = str(payload.get("password", "")).strip()
 
@@ -517,7 +529,7 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
             else:
                 return self._send_json(401, {"success": False, "message": "Invalid username or password"})
 
-        elif parsed.path == "/api/send-email":
+        elif path == "/api/send-email":
             to_email = payload.get("email", "").strip()
             full_name = payload.get("fullName", "").strip()
             cert_id = payload.get("certId", "").strip()
@@ -533,7 +545,7 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
             res = send_certificate_email(to_email, full_name, cert_id, event_name, speaker_name, speaker_id, event_date, image_data)
             return self._send_json(200, res)
 
-        elif parsed.path == "/api/requests":
+        elif path == "/api/requests":
             full_name = str(payload.get("fullName", "")).strip()
             speaker_id = str(payload.get("speakerId", "")).strip()
 
@@ -565,7 +577,7 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
             save_request_to_supabase(new_req)
             return self._send_json(200, {"success": True, "request": new_req})
 
-        elif parsed.path == "/api/requests/status":
+        elif path == "/api/requests/status":
             req_id = payload.get("id")
             new_status = payload.get("status")
             inc_download = payload.get("incrementDownload", False)
@@ -585,12 +597,12 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
             save_request_to_supabase(target)
             return self._send_json(200, {"success": True, "request": target})
 
-        elif parsed.path == "/api/requests/delete":
+        elif path == "/api/requests/delete":
             req_id = payload.get("id")
             delete_request_from_supabase(req_id)
             return self._send_json(200, {"success": True, "message": "Deleted successfully"})
 
-        elif parsed.path == "/api/admin/update-speaker":
+        elif path == "/api/admin/update-speaker":
             speaker_id = str(payload.get("speakerId", "")).strip()
             if speaker_id not in ADMINS:
                 return self._send_json(400, {"success": False, "message": "Invalid speakerId"})
@@ -622,7 +634,7 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
                 "message": f"Updated {ADMINS[speaker_id]['name']} (GID: {ADMINS[speaker_id]['gid']})"
             })
 
-        elif parsed.path == "/api/admin/upload-signature":
+        elif path == "/api/admin/upload-signature":
             speaker_id = str(payload.get("speakerId", "")).strip()
             if speaker_id not in ADMINS:
                 return self._send_json(400, {"success": False, "message": "Invalid speakerId"})
@@ -655,7 +667,7 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 return self._send_json(500, {"success": False, "message": f"Could not save signature: {e}"})
 
-        elif parsed.path == "/api/admin/upload-template":
+        elif path == "/api/admin/upload-template":
             image_data = payload.get("imageData", "")
             target_filename = "template_clean_2x.png"
 
@@ -676,7 +688,7 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 return self._send_json(500, {"success": False, "message": f"Could not save template: {e}"})
 
-        elif parsed.path == "/api/admin/resend-email":
+        elif path == "/api/admin/resend-email":
             cert_id = str(payload.get("certId", "")).strip()
             override_email = str(payload.get("email", "")).strip()
 
@@ -705,7 +717,7 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
 
             return self._send_json(200, res)
 
-        elif parsed.path == "/api/admin/test-email":
+        elif path == "/api/admin/test-email":
             speaker_id = str(payload.get("speakerId", "admin1")).strip()
             to_email = str(payload.get("toEmail", "")).strip()
 

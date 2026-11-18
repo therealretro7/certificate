@@ -9,6 +9,17 @@
 const SUPABASE_URL = "https://sxbnutustirzmesuillx.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4Ym51dHVzdGlyem1lc3VpbGx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ5MDUwMTcsImV4cCI6MjExMDQ4MTAxN30.BHThQ6qFOiEo3LWReRbZ38dGq3q8DTZKzSTltAEXaOg";
 
+// Resolve backend API URL (supports port 8000, Live Server on 5500, file://, and GitHub Pages)
+function getBackendApiUrl(endpoint) {
+  if ((window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && window.location.port === "8000") {
+    return endpoint;
+  }
+  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:") {
+    return `http://localhost:8000${endpoint}`;
+  }
+  return `http://localhost:8000${endpoint}`;
+}
+
 // --- Supabase REST Helpers ---
 async function sbFetch(path, method = "GET", body = null, extraHeaders = {}) {
   const opts = {
@@ -606,26 +617,46 @@ async function handleCertificateRequest() {
       console.warn("Canvas export fallback (e.g. file:// taint):", canvasErr);
     }
 
-    const apiUrl = (window.location.protocol && window.location.protocol.startsWith("http"))
-      ? `${window.location.origin}/api/send-email`
-      : "http://localhost:8000/api/send-email";
+    const apiUrl = getBackendApiUrl("/api/send-email");
+    let resp = null;
+    try {
+      resp = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email,
+          fullName: name,
+          certId: certId,
+          eventName: "Game On: Imagine the Impossible",
+          speakerName: speaker.name,
+          speakerId: speaker.id,
+          eventDate: eventDate,
+          imageData: certImageBase64
+        })
+      });
+    } catch (fetchErr) {
+      // If fetching localhost failed and we are on an HTTP server, try relative path fallback
+      if (apiUrl.startsWith("http://localhost:8000") && window.location.protocol.startsWith("http")) {
+        try {
+          resp = await fetch("/api/send-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: email,
+              fullName: name,
+              certId: certId,
+              eventName: "Game On: Imagine the Impossible",
+              speakerName: speaker.name,
+              speakerId: speaker.id,
+              eventDate: eventDate,
+              imageData: certImageBase64
+            })
+          });
+        } catch (e2) {}
+      }
+    }
 
-    const resp = await fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: email,
-        fullName: name,
-        certId: certId,
-        eventName: "Game On: Imagine the Impossible",
-        speakerName: speaker.name,
-        speakerId: speaker.id,
-        eventDate: eventDate,
-        imageData: certImageBase64
-      })
-    });
-
-    if (resp.ok) {
+    if (resp && resp.ok) {
       const data = await resp.json();
       if (data.smtpSent) {
         emailDispatched = true;
@@ -633,8 +664,14 @@ async function handleCertificateRequest() {
       } else {
         dispatchError = data.error || "Logged without live SMTP";
       }
-    } else {
+    } else if (resp && resp.status === 404) {
+      dispatchError = window.location.hostname.includes("github.io")
+        ? "GitHub Pages is static: to send emails via Gmail, launch http://localhost:8000 (start_portal.bat)"
+        : "Email endpoint not found (Ensure start_portal.bat is running)";
+    } else if (resp) {
       dispatchError = `Server returned HTTP ${resp.status}`;
+    } else {
+      dispatchError = "Email server offline: run start_portal.bat on http://localhost:8000";
     }
   } catch (err) {
     dispatchError = "Backend server not responding on port 8000";
@@ -1156,10 +1193,7 @@ function escapeHtml(text) {
 // Sync custom GIDs and signatures from backend server upon loading
 async function syncAdminSettingsFromServer() {
   try {
-    const apiUrl = (window.location.protocol && window.location.protocol.startsWith("http"))
-      ? `${window.location.origin}/api/admin/settings`
-      : "http://localhost:8000/api/admin/settings";
-
+    const apiUrl = getBackendApiUrl("/api/admin/settings");
     const resp = await fetch(apiUrl);
     if (resp.ok) {
       const data = await resp.json();
@@ -1202,10 +1236,7 @@ window.handleSaveGid = async function (speakerId) {
   }
 
   try {
-    const apiUrl = (window.location.protocol && window.location.protocol.startsWith("http"))
-      ? `${window.location.origin}/api/admin/update-speaker`
-      : "http://localhost:8000/api/admin/update-speaker";
-
+    const apiUrl = getBackendApiUrl("/api/admin/update-speaker");
     const resp = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1248,10 +1279,7 @@ window.handleSignatureUpload = async function (speakerId) {
   reader.onload = async (e) => {
     const base64Data = e.target.result;
     try {
-      const apiUrl = (window.location.protocol && window.location.protocol.startsWith("http"))
-        ? `${window.location.origin}/api/admin/upload-signature`
-        : "http://localhost:8000/api/admin/upload-signature";
-
+      const apiUrl = getBackendApiUrl("/api/admin/upload-signature");
       const resp = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1319,10 +1347,7 @@ window.handleTemplateUpload = async function () {
   reader.onload = async (e) => {
     const base64Data = e.target.result;
     try {
-      const apiUrl = (window.location.protocol && window.location.protocol.startsWith("http"))
-        ? `${window.location.origin}/api/admin/upload-template`
-        : "http://localhost:8000/api/admin/upload-template";
-
+      const apiUrl = getBackendApiUrl("/api/admin/upload-template");
       const resp = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1375,10 +1400,7 @@ window.resendRequestEmail = async function (certId) {
   showToast(`Resending certificate ${certId} to ${targetEmail}... ✉️`);
 
   try {
-    const apiUrl = (window.location.protocol && window.location.protocol.startsWith("http"))
-      ? `${window.location.origin}/api/admin/resend-email`
-      : "http://localhost:8000/api/admin/resend-email";
-
+    const apiUrl = getBackendApiUrl("/api/admin/resend-email");
     const resp = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1414,10 +1436,7 @@ window.handleTestEmail = async function (speakerId) {
   showToast(`Sending test delivery from ${adm.name} via ${adm.email}... ⏳`);
 
   try {
-    const apiUrl = (window.location.protocol && window.location.protocol.startsWith("http"))
-      ? `${window.location.origin}/api/admin/test-email`
-      : "http://localhost:8000/api/admin/test-email";
-
+    const apiUrl = getBackendApiUrl("/api/admin/test-email");
     const resp = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
