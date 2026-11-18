@@ -28,11 +28,16 @@ DEFAULT_SMTP_PASS = os.environ.get("SMTP_PASS", "hcosmwoaoafguhvc")
 PAULBIN_SMTP_USER = os.environ.get("SMTP_USER_PAULBIN", "chackopaulbin@gmail.com")
 PAULBIN_SMTP_PASS = os.environ.get("SMTP_PASS_PAULBIN", "pksn tkqr cleo uvlj")
 
+# Thomas Account
+THOMAS_SMTP_USER = os.environ.get("SMTP_USER_THOMAS", "thomaspd737@gmail.com")
+THOMAS_SMTP_PASS = os.environ.get("SMTP_PASS_THOMAS", "gvgs btzi oqgz ndjs")
+
 def get_smtp_credentials(speaker_id="admin1", speaker_name=None):
     """
     Returns (smtp_user, smtp_pass, sender_display_name).
-    When the session taker is Paulbin, he sends the certificate email via:
-    chackopaulbin@gmail.com / pksn tkqr cleo uvlj
+    When the session taker is Paulbin, sends via chackopaulbin@gmail.com.
+    When the session taker is Thomas, sends via thomaspd737@gmail.com.
+    Otherwise defaults to Aswin Asok KV (aswinashokkv@gmail.com).
     """
     sp_id = str(speaker_id or "").strip().lower()
     sp_name = str(speaker_name or "").strip().lower()
@@ -44,10 +49,22 @@ def get_smtp_credentials(speaker_id="admin1", speaker_name=None):
         "paulbin" in sp_name
     )
 
+    # Detect if session taker / speaker is Thomas
+    is_thomas = (
+        sp_id in ["admin3", "thomas"] or
+        "thomas" in sp_id or
+        "thomas" in sp_name
+    )
+
     if is_paulbin:
         user = PAULBIN_SMTP_USER
         password = PAULBIN_SMTP_PASS.replace(" ", "").strip()
         display_name = "Paulbin Chacko"
+        return user, password, display_name
+    elif is_thomas:
+        user = THOMAS_SMTP_USER
+        password = THOMAS_SMTP_PASS.replace(" ", "").strip()
+        display_name = "THOMAS"
         return user, password, display_name
     elif sp_id == "admin1" or "aswin" in sp_name:
         user = DEFAULT_SMTP_USER
@@ -222,7 +239,7 @@ ADMINS = {
         "pass": "thomas@2026",
         "gid": "1443",
         "signatureFile": "thomas_signature.png",
-        "email": "aswinashokkv@gmail.com"
+        "email": "thomaspd737@gmail.com"
     }
 }
 

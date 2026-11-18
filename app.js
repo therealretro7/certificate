@@ -156,7 +156,7 @@ const ADMIN_CONFIG = {
     pass: "thomas@2026",
     gid: "1443",
     signatureFile: "thomas_signature.png",
-    email: "aswinashokkv@gmail.com",
+    email: "thomaspd737@gmail.com",
     initial: "T",
     color: "#ea4335"
   }
