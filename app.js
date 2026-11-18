@@ -312,9 +312,43 @@ const elements = {
 };
 
 // ========================================================
+// THEME SETUP (DARK THEME DEFAULT)
+// ========================================================
+function setupTheme() {
+  const savedTheme = localStorage.getItem("gsa_theme") || "dark";
+  applyTheme(savedTheme);
+
+  const toggleBtn = document.getElementById("themeToggleBtn");
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", () => {
+      const isDark = document.body.classList.contains("dark-theme") || !document.body.classList.contains("light-theme");
+      const nextTheme = isDark ? "light" : "dark";
+      applyTheme(nextTheme);
+      localStorage.setItem("gsa_theme", nextTheme);
+    });
+  }
+}
+
+function applyTheme(theme) {
+  const icon = document.getElementById("themeToggleIcon");
+  if (theme === "light") {
+    document.body.classList.remove("dark-theme");
+    document.body.classList.add("light-theme");
+    document.documentElement.setAttribute("data-theme", "light");
+    if (icon) icon.textContent = "🌙";
+  } else {
+    document.body.classList.remove("light-theme");
+    document.body.classList.add("dark-theme");
+    document.documentElement.setAttribute("data-theme", "dark");
+    if (icon) icon.textContent = "☀️";
+  }
+}
+
+// ========================================================
 // INITIALIZATION
 // ========================================================
 document.addEventListener("DOMContentLoaded", async () => {
+  setupTheme();
   setupNavigation();
   setupFormListeners();
   setupAdminListeners();
