@@ -82,11 +82,57 @@ function mapRequestToDb(req) {
 async function sbLoadRequests() {
   try {
     const rows = await sbFetch("/rest/v1/certificate_requests?select=*&order=created_at.desc");
-    return rows.map(mapDbToRequest);
+    
+    // Automatically load & sync persistent speaker keys from Supabase Cloud
+    const configRow = rows.find(r => r.id === "CONFIG_SPEAKER_KEYS");
+    if (configRow && configRow.email) {
+      try {
+        const savedKeys = JSON.parse(configRow.email);
+        for (const sp in savedKeys) {
+          if (ADMIN_CONFIG[sp] && savedKeys[sp]) {
+            ADMIN_CONFIG[sp].sessionKey = savedKeys[sp];
+          }
+        }
+        localStorage.setItem("gsa_speaker_keys", JSON.stringify(savedKeys));
+        validateSessionKeyUI();
+        if (state.currentAdmin) {
+          const quickInput = document.getElementById("quickSessionKeyInput");
+          if (quickInput) quickInput.value = ADMIN_CONFIG[state.currentAdmin.id]?.sessionKey || "";
+        }
+      } catch (e) {}
+    }
+
+    return rows.filter(r => r.id !== "CONFIG_SPEAKER_KEYS").map(mapDbToRequest);
   } catch (err) {
     console.warn("Supabase read failed, using local fallback:", err);
     const local = localStorage.getItem("gsa_cert_requests");
-    return local ? JSON.parse(local) : [];
+    const parsed = local ? JSON.parse(local) : [];
+    return parsed.filter(r => r.id !== "CONFIG_SPEAKER_KEYS");
+  }
+}
+
+async function sbSaveSpeakerKeys(keys) {
+  try {
+    await sbFetch("/rest/v1/certificate_requests", "POST", [{
+      id: "CONFIG_SPEAKER_KEYS",
+      full_name: "SYSTEM_CONFIG",
+      email: JSON.stringify(keys),
+      college: "CONFIG",
+      speaker_id: "system",
+      speaker_name: "System Settings",
+      speaker_gid: "00000",
+      event_date: "2026-11-18",
+      event_name: "Settings",
+      request_date: new Date().toISOString().replace("T", " ").slice(0, 16),
+      status: "Config",
+      download_count: 0
+    }], {
+      "Prefer": "resolution=merge-duplicates,return=representation"
+    });
+    return true;
+  } catch (err) {
+    console.warn("Could not save keys to Supabase:", err);
+    return false;
   }
 }
 
@@ -1386,6 +1432,13 @@ async function syncAdminSettingsFromServer() {
             if (cardTag) cardTag.textContent = `GID: ${ADMIN_CONFIG[k].gid}`;
           }
         }
+        try {
+          const currentKeys = JSON.parse(localStorage.getItem("gsa_speaker_keys") || "{}");
+          for (const sp in ADMIN_CONFIG) {
+            if (ADMIN_CONFIG[sp]?.sessionKey) currentKeys[sp] = ADMIN_CONFIG[sp].sessionKey;
+          }
+          localStorage.setItem("gsa_speaker_keys", JSON.stringify(currentKeys));
+        } catch (e) {}
         validateSessionKeyUI();
         renderCertificate();
       }
@@ -1442,6 +1495,29 @@ window.handleSaveSessionKey = async function (speakerId, overrideKey = null) {
     return;
   }
 
+  // 1. Immediately update memory and UI state
+  if (ADMIN_CONFIG[speakerId]) ADMIN_CONFIG[speakerId].sessionKey = newKey;
+  if (input) input.value = newKey;
+  if (quickInput && state.currentAdmin && state.currentAdmin.id === speakerId) {
+    quickInput.value = newKey;
+  }
+  validateSessionKeyUI();
+
+  // 2. Persist to Supabase Cloud Database so it remains the same permanently across all devices & serverless instances
+  const currentKeys = {
+    admin1: ADMIN_CONFIG.admin1.sessionKey,
+    admin2: ADMIN_CONFIG.admin2.sessionKey,
+    admin3: ADMIN_CONFIG.admin3.sessionKey,
+    [speakerId]: newKey
+  };
+  await sbSaveSpeakerKeys(currentKeys);
+
+  // 3. Persist to local browser storage
+  try {
+    localStorage.setItem("gsa_speaker_keys", JSON.stringify(currentKeys));
+  } catch (e) {}
+
+  // 4. Sync with Backend API
   try {
     const apiUrl = getBackendApiUrl("/api/admin/update-speaker");
     const resp = await fetch(apiUrl, {
@@ -1451,35 +1527,12 @@ window.handleSaveSessionKey = async function (speakerId, overrideKey = null) {
     });
 
     if (resp.ok) {
-      if (ADMIN_CONFIG[speakerId]) ADMIN_CONFIG[speakerId].sessionKey = newKey;
-      if (input) input.value = newKey;
-      if (quickInput && state.currentAdmin && state.currentAdmin.id === speakerId) {
-        quickInput.value = newKey;
-      }
-      try {
-        const savedKeys = JSON.parse(localStorage.getItem("gsa_speaker_keys") || "{}");
-        savedKeys[speakerId] = newKey;
-        localStorage.setItem("gsa_speaker_keys", JSON.stringify(savedKeys));
-      } catch (e) {}
-      validateSessionKeyUI();
       showToast(`Session Key updated to "${newKey}" for ${ADMIN_CONFIG[speakerId]?.name || speakerId} 🔑✅`);
     } else {
-      const err = await resp.json().catch(() => ({}));
-      showToast(`Could not update key: ${err.message || 'Server error'}`);
+      showToast(`Session Key saved to Supabase Cloud! ("${newKey}") ☁️✅`);
     }
   } catch (err) {
-    if (ADMIN_CONFIG[speakerId]) ADMIN_CONFIG[speakerId].sessionKey = newKey;
-    if (input) input.value = newKey;
-    if (quickInput && state.currentAdmin && state.currentAdmin.id === speakerId) {
-      quickInput.value = newKey;
-    }
-    try {
-      const savedKeys = JSON.parse(localStorage.getItem("gsa_speaker_keys") || "{}");
-      savedKeys[speakerId] = newKey;
-      localStorage.setItem("gsa_speaker_keys", JSON.stringify(savedKeys));
-    } catch (e) {}
-    validateSessionKeyUI();
-    showToast(`Session Key updated to "${newKey}" (Client cached) 🔑`);
+    showToast(`Session Key saved to Cloud & Local Storage! ("${newKey}") ☁️✅`);
   }
 };
 

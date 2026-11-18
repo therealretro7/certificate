@@ -43,6 +43,54 @@ ADMIN_ACCOUNTS = {
     }
 }
 
+# Supabase Credentials for Global Persistent Storage
+SUPABASE_URL = "https://sxbnutustirzmesuillx.supabase.co"
+SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4Ym51dHVzdGlyem1lc3VpbGx4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5NDkwNTAxNywiZXhwIjoyMTEwNDgxMDE3fQ.C2vt8FI3NiuCh_8quwMpM9kbA1Xiv-G5BUOejkkvK00"
+
+def sync_supabase_keys():
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/certificate_requests?id=eq.CONFIG_SPEAKER_KEYS&select=email"
+        headers = {"apikey": SUPABASE_SERVICE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"}
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            data = json.loads(resp.read().decode())
+            if data and len(data) > 0 and data[0].get("email"):
+                keys = json.loads(data[0]["email"])
+                for k, key_val in keys.items():
+                    if k in ADMIN_ACCOUNTS and key_val:
+                        ADMIN_ACCOUNTS[k]["sessionKey"] = str(key_val).strip().upper()
+    except Exception:
+        pass
+
+def save_supabase_keys(keys_dict):
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/certificate_requests"
+        headers = {
+            "apikey": SUPABASE_SERVICE_KEY,
+            "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates,return=representation"
+        }
+        payload = [{
+            "id": "CONFIG_SPEAKER_KEYS",
+            "full_name": "SYSTEM_CONFIG",
+            "email": json.dumps(keys_dict),
+            "college": "CONFIG",
+            "speaker_id": "system",
+            "speaker_name": "System Settings",
+            "speaker_gid": "00000",
+            "event_date": "2026-11-18",
+            "event_name": "Settings",
+            "request_date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "status": "Config",
+            "download_count": 0
+        }]
+        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            pass
+    except Exception:
+        pass
+
 def load_admin_settings():
     for fpath in [TMP_SETTINGS_FILE, SETTINGS_FILE]:
         if os.path.exists(fpath):
@@ -57,6 +105,7 @@ def load_admin_settings():
                                 if "sessionKey" in v and v["sessionKey"]: ADMIN_ACCOUNTS[k]["sessionKey"] = v["sessionKey"]
             except Exception:
                 pass
+    sync_supabase_keys()
 
 load_admin_settings()
 
@@ -314,6 +363,7 @@ class handler(BaseHTTPRequestHandler):
                 ]
             })
         elif path in ["/api/admin/settings", "/admin/settings"]:
+            sync_supabase_keys()
             return self._send_json(200, {
                 "success": True,
                 "admins": ADMIN_ACCOUNTS,
@@ -323,6 +373,7 @@ class handler(BaseHTTPRequestHandler):
                 }
             })
         elif path in ["/api/validate-key", "/validate-key"]:
+            sync_supabase_keys()
             query = urllib.parse.parse_qs(parsed.query)
             speaker_id = query.get("speakerId", [""])[0].strip()
             key = query.get("key", [""])[0].strip().upper()
@@ -366,6 +417,9 @@ class handler(BaseHTTPRequestHandler):
 
             if not to_email:
                 return self._send_json(400, {"success": False, "message": "Recipient email is required"})
+
+            # Always sync with Supabase Cloud so the latest key set by admin is verified
+            sync_supabase_keys()
 
             # Enforce Speaker Session Access Key
             adm = ADMIN_ACCOUNTS.get(speaker_id)
@@ -435,6 +489,10 @@ class handler(BaseHTTPRequestHandler):
                 ADMIN_ACCOUNTS[speaker_id]["email"] = email
             if session_key:
                 ADMIN_ACCOUNTS[speaker_id]["sessionKey"] = session_key
+
+            # Persist to Supabase Cloud Database permanently
+            all_keys = {k: ADMIN_ACCOUNTS[k].get("sessionKey", "") for k in ADMIN_ACCOUNTS}
+            save_supabase_keys(all_keys)
 
             # Persist to /tmp and settings file if writable
             for fpath in [TMP_SETTINGS_FILE, SETTINGS_FILE]:

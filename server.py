@@ -395,6 +395,7 @@ def load_admin_settings():
                             ADMINS[k].update(v)
         except Exception as e:
             print("Could not load admin_settings.json:", e)
+    sync_supabase_keys()
 
 def save_admin_settings():
     try:
@@ -480,7 +481,19 @@ def load_requests():
         req = urllib.request.Request(url, headers=supabase_headers())
         with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-            mapped = [map_db_to_request(item) for item in data]
+            
+            # Sync persistent speaker keys from Supabase
+            config_item = next((item for item in data if item.get("id") == "CONFIG_SPEAKER_KEYS"), None)
+            if config_item and config_item.get("email"):
+                try:
+                    custom_keys = json.loads(config_item["email"])
+                    for k, val in custom_keys.items():
+                        if k in ADMINS and val:
+                            ADMINS[k]["sessionKey"] = str(val).strip().upper()
+                except Exception:
+                    pass
+
+            mapped = [map_db_to_request(item) for item in data if item.get("id") != "CONFIG_SPEAKER_KEYS"]
             # update local backup
             save_local_requests(mapped)
             return mapped
@@ -491,10 +504,50 @@ def load_requests():
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                return [r for r in json.load(f) if r.get("id") != "CONFIG_SPEAKER_KEYS"]
         except Exception:
             pass
     return []
+
+def sync_supabase_keys():
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/certificate_requests?id=eq.CONFIG_SPEAKER_KEYS&select=email"
+        headers = supabase_headers()
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            data = json.loads(resp.read().decode())
+            if data and len(data) > 0 and data[0].get("email"):
+                keys = json.loads(data[0]["email"])
+                for k, key_val in keys.items():
+                    if k in ADMINS and key_val:
+                        ADMINS[k]["sessionKey"] = str(key_val).strip().upper()
+    except Exception:
+        pass
+
+def save_supabase_keys(keys_dict):
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/certificate_requests"
+        headers = supabase_headers()
+        headers["Prefer"] = "resolution=merge-duplicates"
+        payload = [{
+            "id": "CONFIG_SPEAKER_KEYS",
+            "full_name": "SYSTEM_CONFIG",
+            "email": json.dumps(keys_dict),
+            "college": "CONFIG",
+            "speaker_id": "system",
+            "speaker_name": "System Settings",
+            "speaker_gid": "00000",
+            "event_date": "2026-11-18",
+            "event_name": "Settings",
+            "request_date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "status": "Config",
+            "download_count": 0
+        }]
+        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            pass
+    except Exception as e:
+        print("Warning: Could not save keys to Supabase:", e)
 
 def save_local_requests(data):
     try:
@@ -600,6 +653,7 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
             return self._send_json(200, {"success": True, "admins": public_admins})
 
         elif path == "/api/admin/settings":
+            sync_supabase_keys()
             return self._send_json(200, {
                 "success": True,
                 "admins": {
@@ -816,6 +870,10 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
             session_key = str(payload.get("sessionKey", "")).strip().upper()
             if session_key:
                 ADMINS[speaker_id]["sessionKey"] = session_key
+
+            # Persist to Supabase Cloud Database permanently
+            all_keys = {k: ADMINS[k].get("sessionKey", "") for k in ADMINS}
+            save_supabase_keys(all_keys)
 
             save_admin_settings()
             sync_ps1_config()
