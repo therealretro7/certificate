@@ -284,6 +284,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Check persisted admin session
   checkAdminSession();
 
+  // Load custom session keys from local cache
+  try {
+    const savedKeys = JSON.parse(localStorage.getItem("gsa_speaker_keys") || "{}");
+    for (const sp in savedKeys) {
+      if (ADMIN_CONFIG[sp] && savedKeys[sp]) {
+        ADMIN_CONFIG[sp].sessionKey = savedKeys[sp];
+      }
+    }
+  } catch (e) {}
+
   // Initialize Session Key UI
   validateSessionKeyUI();
 
@@ -1446,6 +1456,11 @@ window.handleSaveSessionKey = async function (speakerId, overrideKey = null) {
       if (quickInput && state.currentAdmin && state.currentAdmin.id === speakerId) {
         quickInput.value = newKey;
       }
+      try {
+        const savedKeys = JSON.parse(localStorage.getItem("gsa_speaker_keys") || "{}");
+        savedKeys[speakerId] = newKey;
+        localStorage.setItem("gsa_speaker_keys", JSON.stringify(savedKeys));
+      } catch (e) {}
       validateSessionKeyUI();
       showToast(`Session Key updated to "${newKey}" for ${ADMIN_CONFIG[speakerId]?.name || speakerId} 🔑✅`);
     } else {
@@ -1458,6 +1473,11 @@ window.handleSaveSessionKey = async function (speakerId, overrideKey = null) {
     if (quickInput && state.currentAdmin && state.currentAdmin.id === speakerId) {
       quickInput.value = newKey;
     }
+    try {
+      const savedKeys = JSON.parse(localStorage.getItem("gsa_speaker_keys") || "{}");
+      savedKeys[speakerId] = newKey;
+      localStorage.setItem("gsa_speaker_keys", JSON.stringify(savedKeys));
+    } catch (e) {}
     validateSessionKeyUI();
     showToast(`Session Key updated to "${newKey}" (Client cached) 🔑`);
   }

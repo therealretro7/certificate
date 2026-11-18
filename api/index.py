@@ -13,6 +13,11 @@ from datetime import datetime
 SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 
+# Base paths and persistent settings
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SETTINGS_FILE = os.path.join(BASE_DIR, "admin_settings.json")
+TMP_SETTINGS_FILE = "/tmp/admin_settings.json"
+
 # Ambassador SMTP Accounts
 ADMIN_ACCOUNTS = {
     "admin1": {
@@ -37,6 +42,23 @@ ADMIN_ACCOUNTS = {
         "sessionKey": os.environ.get("SESSION_KEY_ADMIN3", "GSA-THOMAS-2026")
     }
 }
+
+def load_admin_settings():
+    for fpath in [TMP_SETTINGS_FILE, SETTINGS_FILE]:
+        if os.path.exists(fpath):
+            try:
+                with open(fpath, "r", encoding="utf-8") as f:
+                    settings = json.load(f)
+                    if "admins" in settings:
+                        for k, v in settings["admins"].items():
+                            if k in ADMIN_ACCOUNTS:
+                                if "gid" in v: ADMIN_ACCOUNTS[k]["gid"] = v["gid"]
+                                if "name" in v: ADMIN_ACCOUNTS[k]["name"] = v["name"]
+                                if "sessionKey" in v and v["sessionKey"]: ADMIN_ACCOUNTS[k]["sessionKey"] = v["sessionKey"]
+            except Exception:
+                pass
+
+load_admin_settings()
 
 def resolve_smtp_credentials(speaker_id=None, speaker_name=None):
     sp_id = str(speaker_id or "").strip().lower()
@@ -165,6 +187,21 @@ class handler(BaseHTTPRequestHandler):
                     for k, v in ADMIN_ACCOUNTS.items()
                 }
             })
+        elif path in ["/api/validate-key", "/validate-key"]:
+            query = urllib.parse.parse_qs(parsed.query)
+            speaker_id = query.get("speakerId", [""])[0].strip()
+            key = query.get("key", [""])[0].strip().upper()
+            adm = ADMIN_ACCOUNTS.get(speaker_id)
+            if not adm:
+                return self._send_json(400, {"success": False, "valid": False, "message": "Unknown speaker"})
+            required_key = str(adm.get("sessionKey", "")).strip().upper()
+            is_valid = bool(key and required_key and key == required_key)
+            return self._send_json(200, {
+                "success": True,
+                "valid": is_valid,
+                "speakerId": speaker_id,
+                "speakerName": adm.get("name", "")
+            })
         else:
             return self._send_json(200, {"success": True, "service": "GSA Certificate API (Vercel Serverless)"})
 
@@ -244,6 +281,72 @@ class handler(BaseHTTPRequestHandler):
                 event_date=datetime.now().strftime("%d/%m/%Y")
             )
             return self._send_json(200, res)
+
+        elif path in ["/api/admin/update-speaker", "/admin/update-speaker"]:
+            speaker_id = str(payload.get("speakerId", "")).strip()
+            if speaker_id not in ADMIN_ACCOUNTS:
+                return self._send_json(400, {"success": False, "message": f"Invalid speakerId: {speaker_id}"})
+
+            gid = str(payload.get("gid", "")).strip()
+            name = str(payload.get("name", "")).strip()
+            email = str(payload.get("email", "")).strip()
+            session_key = str(payload.get("sessionKey", "")).strip().upper()
+
+            if gid:
+                ADMIN_ACCOUNTS[speaker_id]["gid"] = gid
+            if name:
+                ADMIN_ACCOUNTS[speaker_id]["name"] = name
+            if email:
+                ADMIN_ACCOUNTS[speaker_id]["email"] = email
+            if session_key:
+                ADMIN_ACCOUNTS[speaker_id]["sessionKey"] = session_key
+
+            # Persist to /tmp and settings file if writable
+            for fpath in [TMP_SETTINGS_FILE, SETTINGS_FILE]:
+                try:
+                    settings = {}
+                    if os.path.exists(fpath):
+                        with open(fpath, "r", encoding="utf-8") as f:
+                            settings = json.load(f)
+                    if "admins" not in settings:
+                        settings["admins"] = {}
+                    if speaker_id not in settings["admins"]:
+                        settings["admins"][speaker_id] = {}
+                    if gid: settings["admins"][speaker_id]["gid"] = gid
+                    if name: settings["admins"][speaker_id]["name"] = name
+                    if email: settings["admins"][speaker_id]["email"] = email
+                    if session_key: settings["admins"][speaker_id]["sessionKey"] = session_key
+                    with open(fpath, "w", encoding="utf-8") as f:
+                        json.dump(settings, f, indent=2)
+                except Exception:
+                    pass
+
+            return self._send_json(200, {
+                "success": True,
+                "speaker": {
+                    "id": speaker_id,
+                    "name": ADMIN_ACCOUNTS[speaker_id]["name"],
+                    "gid": ADMIN_ACCOUNTS[speaker_id]["gid"],
+                    "email": ADMIN_ACCOUNTS[speaker_id]["email"],
+                    "sessionKey": ADMIN_ACCOUNTS[speaker_id].get("sessionKey", "")
+                },
+                "message": f"Updated {ADMIN_ACCOUNTS[speaker_id]['name']} (GID: {ADMIN_ACCOUNTS[speaker_id]['gid']}, Key: {ADMIN_ACCOUNTS[speaker_id].get('sessionKey', '')})"
+            })
+
+        elif path in ["/api/validate-key", "/validate-key"]:
+            speaker_id = str(payload.get("speakerId", "")).strip()
+            key = str(payload.get("key", "")).strip().upper()
+            adm = ADMIN_ACCOUNTS.get(speaker_id)
+            if not adm:
+                return self._send_json(400, {"success": False, "valid": False, "message": "Unknown speaker"})
+            required_key = str(adm.get("sessionKey", "")).strip().upper()
+            is_valid = bool(key and required_key and key == required_key)
+            return self._send_json(200, {
+                "success": True,
+                "valid": is_valid,
+                "speakerId": speaker_id,
+                "speakerName": adm.get("name", "")
+            })
 
         else:
             return self._send_json(404, {"success": False, "message": f"Endpoint {path} not found on Vercel function"})
