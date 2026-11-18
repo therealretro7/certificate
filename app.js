@@ -671,10 +671,10 @@ function renderCertificate(targetCanvas = elements.certificateCanvas, certData =
   ctx.font = '500 24px "Google Sans", Roboto, sans-serif';
   ctx.fillText(speaker.displayName, sigCX, 1205);
 
-  // Subtitle "Google Student Ambassador"
+  // Subtitle "Session Speaker"
   ctx.fillStyle = "#3c4043";
   ctx.font = '400 19px "Google Sans", Roboto, sans-serif';
-  ctx.fillText("Google Student Ambassador", sigCX, 1238);
+  ctx.fillText(speaker.role || "Session Speaker", sigCX, 1238);
   ctx.restore();
 
   // 6. Draw GID at Bottom-Right Corner
@@ -976,8 +976,8 @@ async function runVerification(certId) {
       <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; color: #137333;">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
         <div>
-          <div style="font-size: 1.15rem; font-weight: 700;">Official Certificate Verified ✓</div>
-          <div style="font-size: 0.8rem; color: #137333;">Issued under Google Student Ambassador Program 2026 • Verified via Supabase ☁️</div>
+          <div style="font-size: 1.15rem; font-weight: 700;">Certificate Verified ✓</div>
+          <div style="font-size: 0.8rem; color: #137333;">Game On: Imagine the Impossible 2026 • Verified via Supabase ☁️</div>
         </div>
       </div>
 
