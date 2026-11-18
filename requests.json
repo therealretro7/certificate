@@ -14,20 +14,6 @@
     "downloadCount": 0
   },
   {
-    "id": "CERT-2026-1001",
-    "fullName": "Aswin Asok kv",
-    "email": "aswin.asok@example.com",
-    "college": "College of Engineering",
-    "speakerId": "admin2",
-    "speakerName": "Paulbin Chacko",
-    "speakerGid": "12348",
-    "eventDate": "08/10/2026",
-    "eventName": "Build Your Fest Stall Edition",
-    "requestDate": "2026-10-08 14:30",
-    "status": "Downloaded",
-    "downloadCount": 3
-  },
-  {
     "id": "CERT-2026-1002",
     "fullName": "Rohit Verma",
     "email": "rohit.verma@univ.edu",
