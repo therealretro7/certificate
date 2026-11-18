@@ -49,9 +49,9 @@ def get_smtp_credentials(speaker_id="admin1", speaker_name=None):
         "paulbin" in sp_name
     )
 
-    # Detect if session taker / speaker is Thomas
+    # Detect if session taker / speaker is Thomas PD
     is_thomas = (
-        sp_id in ["admin3", "thomas"] or
+        sp_id in ["admin3", "thomas", "thomas pd", "thomas_pd"] or
         "thomas" in sp_id or
         "thomas" in sp_name
     )
@@ -64,7 +64,7 @@ def get_smtp_credentials(speaker_id="admin1", speaker_name=None):
     elif is_thomas:
         user = THOMAS_SMTP_USER
         password = THOMAS_SMTP_PASS.replace(" ", "").strip()
-        display_name = "THOMAS"
+        display_name = "THOMAS PD"
         return user, password, display_name
     elif sp_id == "admin1" or "aswin" in sp_name:
         user = DEFAULT_SMTP_USER
@@ -234,8 +234,8 @@ ADMINS = {
     },
     "admin3": {
         "id": "admin3",
-        "name": "THOMAS",
-        "username": "THOMAS",
+        "name": "THOMAS PD",
+        "username": "THOMAS PD",
         "pass": "thomas@2026",
         "gid": "14434",
         "signatureFile": "th.jpeg",
@@ -511,7 +511,8 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
 
             found_admin = None
             for key, adm in ADMINS.items():
-                if adm["username"].lower() == username and adm["pass"] == password:
+                match_user = (adm["username"].lower() == username or (key == "admin3" and username in ["thomas", "thomas pd"]))
+                if match_user and adm["pass"] == password:
                     found_admin = adm
                     break
 

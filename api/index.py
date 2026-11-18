@@ -28,7 +28,7 @@ ADMIN_ACCOUNTS = {
         "gid": "12348"
     },
     "admin3": {
-        "name": "THOMAS",
+        "name": "THOMAS PD",
         "email": os.environ.get("SMTP_USER_THOMAS", "thomaspd737@gmail.com"),
         "pass": os.environ.get("SMTP_PASS_THOMAS", "gvgsbtzioqgzndjs"),
         "gid": "14434"
@@ -42,9 +42,9 @@ def resolve_smtp_credentials(speaker_id=None, speaker_name=None):
     if sp_id in ["admin2", "paulbin", "paulbin chacko"] or "paulbin" in sp_id or "paulbin" in sp_name:
         adm = ADMIN_ACCOUNTS["admin2"]
         return adm["email"], adm["pass"].replace(" ", ""), "Paulbin Chacko"
-    elif sp_id in ["admin3", "thomas"] or "thomas" in sp_id or "thomas" in sp_name:
+    elif sp_id in ["admin3", "thomas", "thomas pd", "thomas_pd"] or "thomas" in sp_id or "thomas" in sp_name:
         adm = ADMIN_ACCOUNTS["admin3"]
-        return adm["email"], adm["pass"].replace(" ", ""), "THOMAS"
+        return adm["email"], adm["pass"].replace(" ", ""), "THOMAS PD"
     else:
         adm = ADMIN_ACCOUNTS["admin1"]
         return adm["email"], adm["pass"].replace(" ", ""), "ASWIN ASOK KV"
