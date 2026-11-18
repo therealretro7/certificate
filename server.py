@@ -94,34 +94,169 @@ def send_certificate_email(to_email, full_name, cert_id, event_name, speaker_nam
             msg["From"] = f"{sender_display_name} <{smtp_user}>"
             msg["To"] = to_email
 
-            html_body = f"""
-            <html>
-            <body style="font-family: 'Google Sans', Roboto, Arial, sans-serif; background-color: #f8f9fa; padding: 24px; color: #202124;">
-              <div style="max-width: 620px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #dadce0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
-                <div style="background: linear-gradient(135deg, #1a73e8, #4285f4); padding: 24px; color: white; text-align: center;">
-                  <h1 style="margin: 0; font-size: 24px; font-weight: 600;">Google Student Ambassador Program</h1>
-                  <p style="margin: 6px 0 0; opacity: 0.9; font-size: 15px;">Certificate of Participation</p>
+            html_body = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Certificate of Participation</title>
+</head>
+<body style="margin: 0; padding: 20px 10px; background-color: #f1f4f9; font-family: 'Google Sans', Roboto, -apple-system, BlinkMacSystemFont, Arial, sans-serif; color: #202124;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f1f4f9;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 640px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 30px rgba(66, 133, 244, 0.12); border: 1px solid #e1e4ea;">
+          
+          <!-- Top Google 4-Color Rainbow Stripe -->
+          <tr>
+            <td style="height: 6px; background: linear-gradient(90deg, #4285f4 0%, #4285f4 25%, #ea4335 25%, #ea4335 50%, #fbbc05 50%, #fbbc05 75%, #34a853 75%, #34a853 100%);"></td>
+          </tr>
+
+          <!-- Hero Header with Vibrant Gradient -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #1a73e8 0%, #3b82f6 50%, #0f9d58 100%); padding: 36px 32px 30px; text-align: center; color: #ffffff;">
+              <div style="display: inline-block; background: rgba(255, 255, 255, 0.2); padding: 6px 16px; border-radius: 30px; font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.35);">
+                🎓 Official Certificate of Participation
+              </div>
+              <h1 style="margin: 0 0 8px 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.15);">
+                Google Student Ambassador Program
+              </h1>
+              <p style="margin: 0; font-size: 15px; font-weight: 500; color: #e8f0fe;">
+                Build Your Fest Stall Edition • Game On: Imagine the Impossible
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main Content Area -->
+          <tr>
+            <td style="padding: 32px 28px 20px;">
+              
+              <!-- Greeting & Congratulations Banner -->
+              <div style="background: #e8f0fe; border-left: 4px solid #1a73e8; border-radius: 0 10px 10px 0; padding: 14px 18px; margin-bottom: 24px;">
+                <p style="margin: 0; font-size: 16px; font-weight: 700; color: #1a73e8;">
+                  🎉 Congratulations, {full_name}!
+                </p>
+                <p style="margin: 6px 0 0 0; font-size: 14px; color: #3c4043; line-height: 1.5;">
+                  We are thrilled to present your verified Certificate of Participation for attending the official session conducted by <strong>{speaker_name}</strong>.
+                </p>
+              </div>
+
+              <!-- Certificate Details Table Card -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #fafbff; border-radius: 12px; border: 1.5px solid #d2e3fc; margin-bottom: 24px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 16px 20px; background: #eef4ff; border-bottom: 1px solid #d2e3fc;">
+                    <span style="font-size: 13px; font-weight: 700; color: #1a73e8; letter-spacing: 0.5px; text-transform: uppercase;">
+                      📄 Certificate Metadata & Credentials
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 18px 20px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 13px; color: #5f6368; width: 140px;">Certificate ID:</td>
+                        <td style="padding: 6px 0; font-size: 14px; font-weight: 700; font-family: monospace; color: #1a73e8;">
+                          <span style="background: #e8f0fe; padding: 3px 8px; border-radius: 6px; border: 1px solid #c2e7ff;">{cert_id}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 13px; color: #5f6368;">Recipient:</td>
+                        <td style="padding: 6px 0; font-size: 14px; font-weight: 700; color: #202124;">{full_name}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 13px; color: #5f6368;">Session Speaker:</td>
+                        <td style="padding: 6px 0; font-size: 14px; font-weight: 600; color: #137333;">
+                          🎙️ {speaker_name}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 13px; color: #5f6368;">Event / Date:</td>
+                        <td style="padding: 6px 0; font-size: 13px; color: #3c4043;">{event_name} ({event_date})</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 6px 0; font-size: 13px; color: #5f6368;">Verification Status:</td>
+                        <td style="padding: 6px 0;">
+                          <span style="display: inline-block; background: #e6f4ea; color: #137333; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 12px; border: 1px solid #ceead6;">
+                            ✓ Authenticated & Tamper-Proof
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Certificate Preview Notice Card -->
+              <div style="background: linear-gradient(135deg, #fef7e0 0%, #fffbf0 100%); border: 1.5px solid #fce8b2; border-radius: 12px; padding: 18px 20px; margin-bottom: 26px; text-align: center;">
+                <div style="font-size: 24px; margin-bottom: 6px;">🖼️ 📜</div>
+                <div style="font-size: 15px; font-weight: 700; color: #b06000; margin-bottom: 4px;">
+                  High-Resolution Certificate Attached
                 </div>
-                <div style="padding: 28px;">
-                  <h2 style="font-size: 20px; color: #202124; margin-top: 0;">Dear {full_name},</h2>
-                  <p style="font-size: 15px; line-height: 1.6; color: #3c4043;">
-                    Congratulations! Your official Certificate of Participation for <strong>{event_name}</strong> conducted by <strong>{speaker_name}</strong> has been generated and validated.
-                  </p>
-                  <div style="background: #f1f3f4; border-radius: 8px; padding: 16px; margin: 20px 0; font-size: 14px;">
-                    <div><strong>Certificate ID:</strong> <span style="font-family: monospace;">{cert_id}</span></div>
-                    <div style="margin-top: 6px;"><strong>Issued To:</strong> {full_name}</div>
-                    <div style="margin-top: 6px;"><strong>Ambassador:</strong> {speaker_name}</div>
-                    <div style="margin-top: 6px;"><strong>Issue Date:</strong> {event_date}</div>
-                    <div style="margin-top: 6px;"><strong>Status:</strong> Authenticated ✅</div>
-                  </div>
-                  <p style="font-size: 14px; color: #5f6368;">
-                    Your official certificate image is attached to this email. You can also verify this certificate anytime on the portal using Certificate ID <strong>{cert_id}</strong>.
-                  </p>
+                <div style="font-size: 13px; color: #5f6368; line-height: 1.45;">
+                  Your authentic Google Student Ambassador certificate has been attached directly to this email in full print resolution. Download and save it to your device!
                 </div>
               </div>
-            </body>
-            </html>
-            """
+
+              <!-- Action Call to Action Button -->
+              <div style="text-align: center; margin: 24px 0 10px;">
+                <a href="https://therealretro7.github.io/certificate/?verify={cert_id}" style="display: inline-block; background: linear-gradient(135deg, #1a73e8, #4285f4); color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 700; padding: 14px 28px; border-radius: 8px; box-shadow: 0 4px 12px rgba(26,115,232,0.3);">
+                  🔍 Verify Certificate Authenticity
+                </a>
+              </div>
+
+            </td>
+          </tr>
+
+          <!-- Authorized Signatories Grid -->
+          <tr>
+            <td style="background: #f8fafd; border-top: 1px solid #e8eaed; padding: 22px 28px;">
+              <div style="font-size: 11px; font-weight: 700; color: #70757a; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; text-align: center;">
+                Authorized Google Student Ambassador Signatories
+              </div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" style="font-size: 12px; color: #3c4043; padding: 4px 6px;">
+                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #1a73e8; margin-right: 4px;"></span>
+                    <strong>ASWIN ASOK KV</strong><br>
+                    <span style="font-size: 11px; color: #70757a;">GID: 14248</span>
+                  </td>
+                  <td align="center" style="font-size: 12px; color: #3c4043; padding: 4px 6px;">
+                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #34a853; margin-right: 4px;"></span>
+                    <strong>Paulbin Chacko</strong><br>
+                    <span style="font-size: 11px; color: #70757a;">GID: 12348</span>
+                  </td>
+                  <td align="center" style="font-size: 12px; color: #3c4043; padding: 4px 6px;">
+                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ea4335; margin-right: 4px;"></span>
+                    <strong>THOMAS P D</strong><br>
+                    <span style="font-size: 11px; color: #70757a;">GID: 14434</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer with Rainbow Bottom Strip -->
+          <tr>
+            <td style="background: #202124; padding: 22px 28px; text-align: center; color: #bdc1c6; font-size: 12px; line-height: 1.6;">
+              <p style="margin: 0 0 6px 0; color: #ffffff; font-weight: 600; font-size: 13px;">
+                Google Student Ambassador Program • 2026 Edition
+              </p>
+              <p style="margin: 0; color: #9aa0a6; font-size: 11px;">
+                This automated certificate was generated following authenticated session attendance verification.<br>
+                For any queries, contact your session speaker directly.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="height: 4px; background: linear-gradient(90deg, #4285f4 0%, #ea4335 33%, #fbbc05 66%, #34a853 100%);"></td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
             msg.attach(MIMEText(html_body, "html"))
 
             # Attach Certificate Image: Client base64 or server-rendered
