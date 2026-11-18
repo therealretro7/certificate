@@ -9,14 +9,17 @@
 const SUPABASE_URL = "https://sxbnutustirzmesuillx.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4Ym51dHVzdGlyem1lc3VpbGx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ5MDUwMTcsImV4cCI6MjExMDQ4MTAxN30.BHThQ6qFOiEo3LWReRbZ38dGq3q8DTZKzSTltAEXaOg";
 
-// Resolve backend API URL (supports port 8000, Live Server on 5500, file://, and GitHub Pages)
+// Resolve backend API URL (supports Vercel serverless, local server on port 8000, Live Server on 5500, and file://)
 function getBackendApiUrl(endpoint) {
+  // When deployed to Vercel or any cloud domain, use relative endpoint to invoke Vercel serverless function
+  if (window.location.protocol.startsWith("http") && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+    return endpoint;
+  }
+  // When running locally on port 8000
   if ((window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && window.location.port === "8000") {
     return endpoint;
   }
-  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:") {
-    return `http://localhost:8000${endpoint}`;
-  }
+  // When running locally from file:// or a different port (e.g. 5500), target local python server
   return `http://localhost:8000${endpoint}`;
 }
 
