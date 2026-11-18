@@ -19,19 +19,22 @@ ADMIN_ACCOUNTS = {
         "name": "ASWIN ASOK KV",
         "email": os.environ.get("SMTP_USER", "aswinashokkv@gmail.com"),
         "pass": os.environ.get("SMTP_PASS", "hcosmwoaoafguhvc"),
-        "gid": "14248"
+        "gid": "14248",
+        "sessionKey": os.environ.get("SESSION_KEY_ADMIN1", "GSA-ASWIN-2026")
     },
     "admin2": {
         "name": "Paulbin Chacko",
         "email": os.environ.get("SMTP_USER_PAULBIN", "chackopaulbin@gmail.com"),
         "pass": os.environ.get("SMTP_PASS_PAULBIN", "pksntkqrcleouvlj"),
-        "gid": "12348"
+        "gid": "12348",
+        "sessionKey": os.environ.get("SESSION_KEY_ADMIN2", "GSA-PAULBIN-2026")
     },
     "admin3": {
         "name": "THOMAS P D",
         "email": os.environ.get("SMTP_USER_THOMAS", "thomaspd737@gmail.com"),
         "pass": os.environ.get("SMTP_PASS_THOMAS", "gvgsbtzioqgzndjs"),
-        "gid": "14434"
+        "gid": "14434",
+        "sessionKey": os.environ.get("SESSION_KEY_ADMIN3", "GSA-THOMAS-2026")
     }
 }
 
@@ -187,9 +190,21 @@ class handler(BaseHTTPRequestHandler):
             speaker_id = payload.get("speakerId", "admin1")
             event_date = payload.get("eventDate", "08/10/2026")
             image_data = payload.get("imageData")
+            session_key = str(payload.get("sessionKey", "")).strip().upper()
 
             if not to_email:
                 return self._send_json(400, {"success": False, "message": "Recipient email is required"})
+
+            # Enforce Speaker Session Access Key
+            adm = ADMIN_ACCOUNTS.get(speaker_id)
+            if adm:
+                required_key = str(adm.get("sessionKey", "")).strip().upper()
+                if required_key and session_key != required_key:
+                    return self._send_json(403, {
+                        "success": False,
+                        "smtpSent": False,
+                        "error": f"Invalid Session Key for {adm.get('name', speaker_id)}. Attendance verification failed — email not dispatched."
+                    })
 
             res = send_certificate_email(to_email, full_name, cert_id, event_name, speaker_name, speaker_id, event_date, image_data)
             return self._send_json(200, res)

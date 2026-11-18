@@ -148,7 +148,8 @@ const ADMIN_CONFIG = {
     signatureFile: "Aswin Signature.png",
     email: "aswinashokkv@gmail.com",
     initial: "A",
-    color: "#1a73e8"
+    color: "#1a73e8",
+    sessionKey: "GSA-ASWIN-2026"
   },
   admin2: {
     id: "admin2",
@@ -160,7 +161,8 @@ const ADMIN_CONFIG = {
     signatureFile: "paul_signature_transparent.png",
     email: "chackopaulbin@gmail.com",
     initial: "P",
-    color: "#34a853"
+    color: "#34a853",
+    sessionKey: "GSA-PAULBIN-2026"
   },
   admin3: {
     id: "admin3",
@@ -172,7 +174,8 @@ const ADMIN_CONFIG = {
     signatureFile: "th.jpeg",
     email: "thomaspd737@gmail.com",
     initial: "T",
-    color: "#ea4335"
+    color: "#ea4335",
+    sessionKey: "GSA-THOMAS-2026"
   }
 };
 
@@ -212,12 +215,19 @@ const elements = {
   participantCollege: document.getElementById("participantCollege"),
   sessionDate: document.getElementById("sessionDate"),
   speakerCards: document.querySelectorAll(".speaker-card"),
+  sessionAccessKey: document.getElementById("sessionAccessKey"),
+  selectedSpeakerKeyName: document.getElementById("selectedSpeakerKeyName"),
+  sessionKeyFeedback: document.getElementById("sessionKeyFeedback"),
+  sessionKeyIcon: document.getElementById("sessionKeyIcon"),
+  sessionKeyLockBadge: document.getElementById("sessionKeyLockBadge"),
   certificateCanvas: document.getElementById("certificateCanvas"),
   currentCertIdDisplay: document.getElementById("currentCertIdDisplay"),
   emailSentNotification: document.getElementById("emailSentNotification"),
   sentEmailAddressText: document.getElementById("sentEmailAddressText"),
   sentCertIdText: document.getElementById("sentCertIdText"),
   copyVerifyLinkBtn: document.getElementById("copyVerifyLinkBtn"),
+  btnClientDownloadPng: document.getElementById("btnClientDownloadPng"),
+  btnClientDownloadPdf: document.getElementById("btnClientDownloadPdf"),
 
   // Verification
   verifyInputId: document.getElementById("verifyInputId"),
@@ -273,6 +283,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Check persisted admin session
   checkAdminSession();
+
+  // Initialize Session Key UI
+  validateSessionKeyUI();
 
   // Render initial certificate preview
   renderCertificate();
@@ -381,9 +394,37 @@ function setupFormListeners() {
       if (radio) {
         radio.checked = true;
       }
+      const speaker = getSelectedSpeaker();
+      if (elements.selectedSpeakerKeyName) {
+        elements.selectedSpeakerKeyName.textContent = speaker.name;
+      }
+      validateSessionKeyUI();
       renderCertificate();
     });
   });
+
+  // Session Key Live Validation
+  if (elements.sessionAccessKey) {
+    elements.sessionAccessKey.addEventListener("input", () => {
+      validateSessionKeyUI();
+    });
+  }
+
+  // Client Download PNG Button
+  if (elements.btnClientDownloadPng) {
+    elements.btnClientDownloadPng.addEventListener("click", () => {
+      if (!verifyKeyBeforeDownload()) return;
+      downloadCertificateImage(elements.certificateCanvas, "png");
+    });
+  }
+
+  // Client Download PDF Button
+  if (elements.btnClientDownloadPdf) {
+    elements.btnClientDownloadPdf.addEventListener("click", () => {
+      if (!verifyKeyBeforeDownload()) return;
+      downloadCertificatePdf(elements.certificateCanvas);
+    });
+  }
 
   // Certificate Request Submit
   elements.certificateForm.addEventListener("submit", async (e) => {
@@ -415,6 +456,70 @@ function setupFormListeners() {
       if (id) runVerification(id);
     }
   });
+}
+
+// Live Attendee Session Key Validation UI
+function validateSessionKeyUI() {
+  if (!elements.sessionAccessKey) return false;
+  const speaker = getSelectedSpeaker();
+  const entered = elements.sessionAccessKey.value.trim().toUpperCase();
+  const required = (speaker.sessionKey || "").trim().toUpperCase();
+
+  if (!entered) {
+    if (elements.sessionKeyFeedback) elements.sessionKeyFeedback.style.display = "none";
+    if (elements.sessionKeyIcon) elements.sessionKeyIcon.textContent = "🔒";
+    if (elements.sessionKeyLockBadge) {
+      elements.sessionKeyLockBadge.textContent = "🔒 Required for Attendance";
+      elements.sessionKeyLockBadge.style.background = "#e8f0fe";
+      elements.sessionKeyLockBadge.style.color = "#1a73e8";
+    }
+    elements.sessionAccessKey.style.borderColor = "#dadce0";
+    return false;
+  }
+
+  if (entered === required) {
+    if (elements.sessionKeyFeedback) {
+      elements.sessionKeyFeedback.style.display = "block";
+      elements.sessionKeyFeedback.style.color = "#137333";
+      elements.sessionKeyFeedback.innerHTML = `✓ Key Verified! Certificate unlocked for <strong>${escapeHtml(speaker.name)}</strong>.`;
+    }
+    if (elements.sessionKeyIcon) elements.sessionKeyIcon.textContent = "🔓";
+    if (elements.sessionKeyLockBadge) {
+      elements.sessionKeyLockBadge.textContent = "✓ Verified Attendee";
+      elements.sessionKeyLockBadge.style.background = "#e6f4ea";
+      elements.sessionKeyLockBadge.style.color = "#137333";
+    }
+    elements.sessionAccessKey.style.borderColor = "#34a853";
+    return true;
+  } else {
+    if (elements.sessionKeyFeedback) {
+      elements.sessionKeyFeedback.style.display = "block";
+      elements.sessionKeyFeedback.style.color = "#d93025";
+      elements.sessionKeyFeedback.innerHTML = `✕ Invalid key for <strong>${escapeHtml(speaker.name)}</strong>. Please check the session key distributed by your speaker.`;
+    }
+    if (elements.sessionKeyIcon) elements.sessionKeyIcon.textContent = "🔒";
+    if (elements.sessionKeyLockBadge) {
+      elements.sessionKeyLockBadge.textContent = "✕ Key Mismatch";
+      elements.sessionKeyLockBadge.style.background = "#fce8e6";
+      elements.sessionKeyLockBadge.style.color = "#c5221f";
+    }
+    elements.sessionAccessKey.style.borderColor = "#ea4335";
+    return false;
+  }
+}
+
+function verifyKeyBeforeDownload() {
+  const speaker = getSelectedSpeaker();
+  const isValid = validateSessionKeyUI();
+  if (!isValid) {
+    showToast(`🔒 Access Locked: Please enter the valid Session Key distributed by ${speaker.name} to download your certificate.`);
+    if (elements.sessionAccessKey) {
+      elements.sessionAccessKey.focus();
+      elements.sessionAccessKey.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    return false;
+  }
+  return true;
 }
 
 function getSelectedSpeaker() {
@@ -566,6 +671,8 @@ async function handleCertificateRequest() {
   const college = elements.participantCollege.value.trim();
   const speaker = getSelectedSpeaker();
   const eventDate = elements.sessionDate.value.trim() || "08/10/2026";
+  const enteredKey = (elements.sessionAccessKey ? elements.sessionAccessKey.value : "").trim().toUpperCase();
+  const requiredKey = (speaker.sessionKey || "").trim().toUpperCase();
 
   if (!name) {
     showToast("Please enter your full name");
@@ -576,6 +683,28 @@ async function handleCertificateRequest() {
   if (!email || !email.includes("@")) {
     showToast("Please enter a valid email address for delivery");
     elements.participantEmail.focus();
+    return;
+  }
+
+  // Attendance Verification Gate: Speaker Session Key
+  if (!enteredKey) {
+    showToast(`🔑 Speaker Session Key Required! Enter the secret key given by ${speaker.name}.`);
+    if (elements.sessionAccessKey) {
+      elements.sessionAccessKey.focus();
+      elements.sessionAccessKey.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    validateSessionKeyUI();
+    return;
+  }
+
+  if (enteredKey !== requiredKey) {
+    showToast(`❌ Invalid Session Key for ${speaker.name}. Only attendees who attended this session can access certificates.`);
+    if (elements.sessionAccessKey) {
+      elements.sessionAccessKey.focus();
+      elements.sessionAccessKey.select();
+      elements.sessionAccessKey.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    validateSessionKeyUI();
     return;
   }
 
@@ -599,7 +728,8 @@ async function handleCertificateRequest() {
     eventName: "Game On: Imagine the Impossible",
     requestDate: new Date().toISOString().replace("T", " ").slice(0, 16),
     status: "Email Sent",
-    downloadCount: 0
+    downloadCount: 0,
+    sessionKeyUsed: enteredKey
   };
 
   // 1. Upsert directly to Supabase
@@ -634,6 +764,7 @@ async function handleCertificateRequest() {
           speakerName: speaker.name,
           speakerId: speaker.id,
           eventDate: eventDate,
+          sessionKey: enteredKey,
           imageData: certImageBase64
         })
       });
@@ -652,11 +783,18 @@ async function handleCertificateRequest() {
               speakerName: speaker.name,
               speakerId: speaker.id,
               eventDate: eventDate,
+              sessionKey: enteredKey,
               imageData: certImageBase64
             })
           });
         } catch (e2) {}
       }
+    }
+
+    if (resp && resp.status === 403) {
+      const forbiddenData = await resp.json().catch(() => ({}));
+      showToast(`❌ ${forbiddenData.error || 'Attendance verification failed: Invalid session key.'}`, 6000);
+      return;
     }
 
     if (resp && resp.ok) {
@@ -1208,9 +1346,13 @@ async function syncAdminSettingsFromServer() {
             if (data.admins[k].gid) ADMIN_CONFIG[k].gid = data.admins[k].gid;
             if (data.admins[k].signatureFile) ADMIN_CONFIG[k].signatureFile = data.admins[k].signatureFile;
             if (data.admins[k].email) ADMIN_CONFIG[k].email = data.admins[k].email;
+            if (data.admins[k].sessionKey) ADMIN_CONFIG[k].sessionKey = data.admins[k].sessionKey;
 
             const gidInput = document.getElementById(`adminGidInput_${k}`);
             if (gidInput) gidInput.value = ADMIN_CONFIG[k].gid;
+
+            const sessionKeyInput = document.getElementById(`adminSessionKeyInput_${k}`);
+            if (sessionKeyInput) sessionKeyInput.value = ADMIN_CONFIG[k].sessionKey;
 
             const sigFilename = document.getElementById(`sigFilename_${k}`);
             if (sigFilename) sigFilename.textContent = ADMIN_CONFIG[k].signatureFile;
@@ -1222,6 +1364,7 @@ async function syncAdminSettingsFromServer() {
             if (cardTag) cardTag.textContent = `GID: ${ADMIN_CONFIG[k].gid}`;
           }
         }
+        validateSessionKeyUI();
         renderCertificate();
       }
     }
@@ -1267,7 +1410,53 @@ window.handleSaveGid = async function (speakerId) {
   }
 };
 
-// 2. Upload New Signature for an Ambassador
+// 2. Update Session Key for an Ambassador
+window.handleSaveSessionKey = async function (speakerId) {
+  const input = document.getElementById(`adminSessionKeyInput_${speakerId}`);
+  if (!input) return;
+  const newKey = input.value.trim().toUpperCase();
+  if (!newKey) {
+    showToast("Please enter a valid session key (e.g. GSA-ASWIN-2026)");
+    return;
+  }
+
+  try {
+    const apiUrl = getBackendApiUrl("/api/admin/update-speaker");
+    const resp = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ speakerId, sessionKey: newKey })
+    });
+
+    if (resp.ok) {
+      if (ADMIN_CONFIG[speakerId]) ADMIN_CONFIG[speakerId].sessionKey = newKey;
+      input.value = newKey;
+      validateSessionKeyUI();
+      showToast(`Session Key updated to "${newKey}" for ${ADMIN_CONFIG[speakerId]?.name || speakerId} 🔑✅`);
+    } else {
+      const err = await resp.json().catch(() => ({}));
+      showToast(`Could not update key: ${err.message || 'Server error'}`);
+    }
+  } catch (err) {
+    if (ADMIN_CONFIG[speakerId]) ADMIN_CONFIG[speakerId].sessionKey = newKey;
+    input.value = newKey;
+    validateSessionKeyUI();
+    showToast(`Session Key updated to "${newKey}" (Client cached) 🔑`);
+  }
+};
+
+// 3. Copy Session Key to Clipboard
+window.copySessionKeyToClipboard = function (speakerId) {
+  const key = ADMIN_CONFIG[speakerId]?.sessionKey || document.getElementById(`adminSessionKeyInput_${speakerId}`)?.value || "";
+  if (!key) return;
+  navigator.clipboard.writeText(key).then(() => {
+    showToast(`📋 Copied session key "${key}" to clipboard! Share it with your session attendees.`);
+  }).catch(() => {
+    showToast(`Session key: ${key}`);
+  });
+};
+
+// 4. Upload New Signature for an Ambassador
 window.handleSignatureUpload = async function (speakerId) {
   const fileInput = document.getElementById(`sigFileInput_${speakerId}`);
   if (!fileInput || !fileInput.files || fileInput.files.length === 0) return;

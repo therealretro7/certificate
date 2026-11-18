@@ -4,19 +4,22 @@
       "gid": "14248",
       "signatureFile": "Aswin Signature.png",
       "email": "aswinashokkv@gmail.com",
-      "name": "ASWIN ASOK KV"
+      "name": "ASWIN ASOK KV",
+      "sessionKey": "GSA-ASWIN-2026"
     },
     "admin2": {
       "gid": "12348",
       "signatureFile": "paul_signature_transparent.png",
       "email": "chackopaulbin@gmail.com",
-      "name": "Paulbin Chacko"
+      "name": "Paulbin Chacko",
+      "sessionKey": "GSA-PAULBIN-2026"
     },
     "admin3": {
       "gid": "14434",
       "signatureFile": "th.jpeg",
       "email": "thomaspd737@gmail.com",
-      "name": "THOMAS P D"
+      "name": "THOMAS P D",
+      "sessionKey": "GSA-THOMAS-2026"
     }
   }
 }

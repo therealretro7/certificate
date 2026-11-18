@@ -221,7 +221,8 @@ ADMINS = {
         "pass": "Aswin_Achu12",
         "gid": "14248",
         "signatureFile": "Aswin Signature.png",
-        "email": "aswinashokkv@gmail.com"
+        "email": "aswinashokkv@gmail.com",
+        "sessionKey": "GSA-ASWIN-2026"
     },
     "admin2": {
         "id": "admin2",
@@ -230,7 +231,8 @@ ADMINS = {
         "pass": "Paulbin@2005",
         "gid": "12348",
         "signatureFile": "paul_signature_transparent.png",
-        "email": "chackopaulbin@gmail.com"
+        "email": "chackopaulbin@gmail.com",
+        "sessionKey": "GSA-PAULBIN-2026"
     },
     "admin3": {
         "id": "admin3",
@@ -239,7 +241,8 @@ ADMINS = {
         "pass": "thomas@2026",
         "gid": "14434",
         "signatureFile": "th.jpeg",
-        "email": "thomaspd737@gmail.com"
+        "email": "thomaspd737@gmail.com",
+        "sessionKey": "GSA-THOMAS-2026"
     }
 }
 
@@ -267,7 +270,8 @@ def save_admin_settings():
                         "gid": v.get("gid"),
                         "signatureFile": v.get("signatureFile"),
                         "email": v.get("email"),
-                        "name": v.get("name")
+                        "name": v.get("name"),
+                        "sessionKey": v.get("sessionKey", "")
                     } for k, v in ADMINS.items()
                 }
             }, f, indent=2)
@@ -469,7 +473,8 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
                         "name": v["name"],
                         "gid": v["gid"],
                         "signatureFile": v["signatureFile"],
-                        "email": v.get("email", "")
+                        "email": v.get("email", ""),
+                        "sessionKey": v.get("sessionKey", "")
                     } for k, v in ADMINS.items()
                 },
                 "template": "template_clean_2x.png",
@@ -479,6 +484,22 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
                     "admin2": {"user": PAULBIN_SMTP_USER, "active": bool(PAULBIN_SMTP_USER and PAULBIN_SMTP_PASS)},
                     "admin3": {"user": THOMAS_SMTP_USER, "active": bool(THOMAS_SMTP_USER and THOMAS_SMTP_PASS)}
                 }
+            })
+
+        elif path == "/api/validate-key":
+            query = urllib.parse.parse_qs(parsed.query)
+            speaker_id = query.get("speakerId", [""])[0].strip()
+            key = query.get("key", [""])[0].strip().upper()
+            adm = ADMINS.get(speaker_id)
+            if not adm:
+                return self._send_json(400, {"success": False, "valid": False, "message": "Unknown speaker"})
+            required_key = str(adm.get("sessionKey", "")).strip().upper()
+            is_valid = bool(key and required_key and key == required_key)
+            return self._send_json(200, {
+                "success": True,
+                "valid": is_valid,
+                "speakerId": speaker_id,
+                "speakerName": adm.get("name", "")
             })
 
         elif path.startswith("/api/verify/"):
@@ -530,6 +551,21 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
             else:
                 return self._send_json(401, {"success": False, "message": "Invalid username or password"})
 
+        elif path == "/api/validate-key":
+            speaker_id = str(payload.get("speakerId", "")).strip()
+            key = str(payload.get("key", "")).strip().upper()
+            adm = ADMINS.get(speaker_id)
+            if not adm:
+                return self._send_json(400, {"success": False, "valid": False, "message": "Unknown speaker"})
+            required_key = str(adm.get("sessionKey", "")).strip().upper()
+            is_valid = bool(key and required_key and key == required_key)
+            return self._send_json(200, {
+                "success": True,
+                "valid": is_valid,
+                "speakerId": speaker_id,
+                "speakerName": adm.get("name", "")
+            })
+
         elif path == "/api/send-email":
             to_email = payload.get("email", "").strip()
             full_name = payload.get("fullName", "").strip()
@@ -539,9 +575,21 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
             speaker_id = payload.get("speakerId", "admin1")
             event_date = payload.get("eventDate", "08/10/2026")
             image_data = payload.get("imageData")
+            session_key = str(payload.get("sessionKey", "")).strip().upper()
 
             if not to_email:
                 return self._send_json(400, {"success": False, "message": "Recipient email is required"})
+
+            # Enforce Speaker Session Access Key
+            adm = ADMINS.get(speaker_id)
+            if adm:
+                required_key = str(adm.get("sessionKey", "")).strip().upper()
+                if required_key and session_key != required_key:
+                    return self._send_json(403, {
+                        "success": False,
+                        "smtpSent": False,
+                        "error": f"Invalid Session Key for {adm.get('name', speaker_id)}. Attendance verification failed — email not dispatched."
+                    })
 
             res = send_certificate_email(to_email, full_name, cert_id, event_name, speaker_name, speaker_id, event_date, image_data)
             return self._send_json(200, res)
@@ -549,6 +597,7 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
         elif path == "/api/requests":
             full_name = str(payload.get("fullName", "")).strip()
             speaker_id = str(payload.get("speakerId", "")).strip()
+            session_key = str(payload.get("sessionKey", "")).strip().upper()
 
             if not full_name:
                 return self._send_json(400, {"success": False, "message": "Full Name is required"})
@@ -556,6 +605,13 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
                 return self._send_json(400, {"success": False, "message": "Please select a valid Admin speaker"})
 
             admin_info = ADMINS[speaker_id]
+            required_key = str(admin_info.get("sessionKey", "")).strip().upper()
+            if required_key and session_key != required_key:
+                return self._send_json(403, {
+                    "success": False,
+                    "message": f"Invalid Session Key for {admin_info.get('name', speaker_id)}. Attendance verification failed."
+                })
+
             req_id = payload.get("id")
             if not req_id:
                 req_id = f"CERT-2026-{int(datetime.now().timestamp() % 100000):05d}"
@@ -572,7 +628,8 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
                 "eventName": "Game On: Imagine the Impossible",
                 "requestDate": datetime.now().strftime("%Y-%m-%d %H:%M"),
                 "status": payload.get("status", "Requested"),
-                "downloadCount": payload.get("downloadCount", 0)
+                "downloadCount": payload.get("downloadCount", 0),
+                "sessionKeyUsed": session_key
             }
 
             save_request_to_supabase(new_req)
@@ -621,6 +678,10 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
             if email:
                 ADMINS[speaker_id]["email"] = email
 
+            session_key = str(payload.get("sessionKey", "")).strip().upper()
+            if session_key:
+                ADMINS[speaker_id]["sessionKey"] = session_key
+
             save_admin_settings()
             sync_ps1_config()
             return self._send_json(200, {
@@ -630,9 +691,10 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
                     "name": ADMINS[speaker_id]["name"],
                     "gid": ADMINS[speaker_id]["gid"],
                     "signatureFile": ADMINS[speaker_id]["signatureFile"],
-                    "email": ADMINS[speaker_id].get("email", "")
+                    "email": ADMINS[speaker_id].get("email", ""),
+                    "sessionKey": ADMINS[speaker_id].get("sessionKey", "")
                 },
-                "message": f"Updated {ADMINS[speaker_id]['name']} (GID: {ADMINS[speaker_id]['gid']})"
+                "message": f"Updated {ADMINS[speaker_id]['name']} (GID: {ADMINS[speaker_id]['gid']}, Key: {ADMINS[speaker_id].get('sessionKey', '')})"
             })
 
         elif path == "/api/admin/upload-signature":

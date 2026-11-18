@@ -11,9 +11,13 @@ A complete, dual-portal web application for requesting, generating, verifying, a
   * Participant Full Name (with live real-time canvas preview).
   * Email Address & College / Institution / Department.
   * **Session Taken By (Mandatory Admin Selection):**
-    * **Admin 1:** `ASWIN ASOK KV` (GID: 14248)
-    * **Admin 2:** `Paulbin Chacko` (GID: 12348)
-    * **Admin 3:** `THOMAS P D` (GID: 14434)
+    * **Admin 1:** `ASWIN ASOK KV` (GID: 14248 | Key: `GSA-ASWIN-2026`)
+    * **Admin 2:** `Paulbin Chacko` (GID: 12348 | Key: `GSA-PAULBIN-2026`)
+    * **Admin 3:** `THOMAS P D` (GID: 14434 | Key: `GSA-THOMAS-2026`)
+  * **Speaker Session Key (Attendance Verification Gate):**
+    * Unique secret access key distributed to attendees during each session.
+    * Real-time visual feedback unlocks only when the attendee enters the speaker's matching key.
+    * Prevents unauthorized certificate generation, downloads, and email dispatch.
   * Event / Session Date (defaults to `08/10/2026`).
 * **Pixel-Perfect Certificate Canvas Preview:**
   * Exact replica of the official reference template with Google logo, colorful GSA emblem, award ribbon badge, title card with rainbow underline, and cute Google doodles.
@@ -51,7 +55,7 @@ A complete, dual-portal web application for requesting, generating, verifying, a
     * **Approve / Toggle Status:** Mark as Approved or Requested.
     * **Delete Request:** Remove invalid entries.
   * **Export to CSV:** One-click download of all request data in spreadsheet format for Excel or Google Sheets.
-  * **Speaker Profiles & Signature Showcase:** Visual gallery of all 3 admin credentials, signatures, and assigned GIDs.
+  * **Speaker Profiles, Signatures & Key Management:** Visual gallery of all 3 admin credentials, signatures, assigned GIDs, and customizable Attendee Session Keys with one-click clipboard copying.
 
 ---
 
