@@ -19,22 +19,62 @@ DISPATCHED_EMAILS_FILE = os.path.join(BASE_DIR, "dispatched_emails.json")
 # SMTP Configuration (Can be customized via Environment variables)
 SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER = os.environ.get("SMTP_USER", "aswinashokkv@gmail.com")
-SMTP_PASS = os.environ.get("SMTP_PASS", "hcosmwoaoafguhvc")
+
+# Default Account (Aswin Asok KV)
+DEFAULT_SMTP_USER = os.environ.get("SMTP_USER", "aswinashokkv@gmail.com")
+DEFAULT_SMTP_PASS = os.environ.get("SMTP_PASS", "hcosmwoaoafguhvc")
+
+# Paulbin Chacko Account
+PAULBIN_SMTP_USER = os.environ.get("SMTP_USER_PAULBIN", "chackopaulbin@gmail.com")
+PAULBIN_SMTP_PASS = os.environ.get("SMTP_PASS_PAULBIN", "pksn tkqr cleo uvlj")
+
+def get_smtp_credentials(speaker_id="admin1", speaker_name=None):
+    """
+    Returns (smtp_user, smtp_pass, sender_display_name).
+    When the session taker is Paulbin, he sends the certificate email via:
+    chackopaulbin@gmail.com / pksn tkqr cleo uvlj
+    """
+    sp_id = str(speaker_id or "").strip().lower()
+    sp_name = str(speaker_name or "").strip().lower()
+
+    # Detect if session taker / speaker is Paulbin
+    is_paulbin = (
+        sp_id in ["admin2", "paulbin", "paulbin chacko", "paulbin_chacko"] or
+        "paulbin" in sp_id or
+        "paulbin" in sp_name
+    )
+
+    if is_paulbin:
+        user = PAULBIN_SMTP_USER
+        password = PAULBIN_SMTP_PASS.replace(" ", "").strip()
+        display_name = "Paulbin Chacko"
+        return user, password, display_name
+    elif sp_id == "admin1" or "aswin" in sp_name:
+        user = DEFAULT_SMTP_USER
+        password = DEFAULT_SMTP_PASS.replace(" ", "").strip()
+        display_name = "ASWIN ASOK KV"
+        return user, password, display_name
+    else:
+        user = DEFAULT_SMTP_USER
+        password = DEFAULT_SMTP_PASS.replace(" ", "").strip()
+        display_name = speaker_name if speaker_name else "Google Student Ambassador Program"
+        return user, password, display_name
 
 def send_certificate_email(to_email, full_name, cert_id, event_name, speaker_name, speaker_id="admin1", event_date="08/10/2026", image_data=None):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     subject = f"Your Certificate of Participation: {event_name} (ID: {cert_id})"
     
-    # Check if SMTP credentials are provided
+    # Resolve sender SMTP credentials based on session taker
+    smtp_user, smtp_pass, sender_display_name = get_smtp_credentials(speaker_id, speaker_name)
+    
     smtp_sent = False
     error_msg = None
     
-    if SMTP_USER and SMTP_PASS:
+    if smtp_user and smtp_pass:
         try:
             msg = MIMEMultipart("related")
             msg["Subject"] = subject
-            msg["From"] = f"Google Student Ambassador Program <{SMTP_USER}>"
+            msg["From"] = f"{sender_display_name} <{smtp_user}>"
             msg["To"] = to_email
 
             html_body = f"""
@@ -105,12 +145,12 @@ def send_certificate_email(to_email, full_name, cert_id, event_name, speaker_nam
 
             with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
                 server.starttls()
-                server.login(SMTP_USER, SMTP_PASS)
+                server.login(smtp_user, smtp_pass)
                 server.send_message(msg)
             smtp_sent = True
         except Exception as e:
             error_msg = str(e)
-            print(f"SMTP sending failed: {e}")
+            print(f"SMTP sending failed via {smtp_user}: {e}")
 
     # Record dispatch log
     dispatch_record = {
@@ -119,6 +159,8 @@ def send_certificate_email(to_email, full_name, cert_id, event_name, speaker_nam
         "fullName": full_name,
         "eventName": event_name,
         "speakerName": speaker_name,
+        "speakerId": speaker_id,
+        "senderEmail": smtp_user,
         "timestamp": timestamp,
         "smtpDelivered": smtp_sent,
         "status": "Sent" if smtp_sent else "Dispatched (System Logged)",
@@ -139,13 +181,14 @@ def send_certificate_email(to_email, full_name, cert_id, event_name, speaker_nam
     except Exception as e:
         print("Could not save dispatch log:", e)
 
-    print(f"✉️ [EMAIL DISPATCH] Certificate {cert_id} dispatched to: {to_email} ({'Live SMTP' if smtp_sent else 'Simulated/System Log'})")
+    print(f"✉️ [EMAIL DISPATCH] Certificate {cert_id} dispatched from {smtp_user} to: {to_email} ({'Live SMTP' if smtp_sent else 'Simulated/System Log'})")
     return {
         "success": True,
         "smtpSent": smtp_sent,
+        "sender": smtp_user,
         "email": to_email,
         "certId": cert_id,
-        "message": f"Certificate has been dispatched to {to_email}."
+        "message": f"Certificate has been dispatched from {smtp_user} to {to_email}."
     }
 
 # Supabase Credentials
@@ -160,7 +203,8 @@ ADMINS = {
         "username": "ASWIN ASOK KV",
         "pass": "Aswin_Achu12",
         "gid": "14248",
-        "signatureFile": "Aswin Signature.png"
+        "signatureFile": "Aswin Signature.png",
+        "email": "aswinashokkv@gmail.com"
     },
     "admin2": {
         "id": "admin2",
@@ -168,7 +212,8 @@ ADMINS = {
         "username": "Paulbin Chacko",
         "pass": "Paulbin@2005",
         "gid": "12348",
-        "signatureFile": "paul_signature_transparent.png"
+        "signatureFile": "paul_signature_transparent.png",
+        "email": "chackopaulbin@gmail.com"
     },
     "admin3": {
         "id": "admin3",
@@ -176,7 +221,8 @@ ADMINS = {
         "username": "THOMAS",
         "pass": "thomas@2026",
         "gid": "1443",
-        "signatureFile": "thomas_signature.png"
+        "signatureFile": "thomas_signature.png",
+        "email": "aswinashokkv@gmail.com"
     }
 }
 

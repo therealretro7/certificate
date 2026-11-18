@@ -132,6 +132,7 @@ const ADMIN_CONFIG = {
     pass: "Aswin_Achu12",
     gid: "14248",
     signatureFile: "Aswin Signature.png",
+    email: "aswinashokkv@gmail.com",
     initial: "A",
     color: "#1a73e8"
   },
@@ -143,6 +144,7 @@ const ADMIN_CONFIG = {
     pass: "Paulbin@2005",
     gid: "12348",
     signatureFile: "paul_signature_transparent.png",
+    email: "chackopaulbin@gmail.com",
     initial: "P",
     color: "#34a853"
   },
@@ -154,6 +156,7 @@ const ADMIN_CONFIG = {
     pass: "thomas@2026",
     gid: "1443",
     signatureFile: "thomas_signature.png",
+    email: "aswinashokkv@gmail.com",
     initial: "T",
     color: "#ea4335"
   }
