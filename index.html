@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Certificate Portal • Game On 2026</title>
+  <title>Certificate Portal • Product Understanding 2026</title>
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,7 +22,7 @@
         </svg>
       </div>
       <span class="brand-text">Certificate Portal</span>
-      <span class="brand-tag">Game On 2026</span>
+      <span class="brand-tag">Product Understanding</span>
       <div class="supabase-status-pill" id="supabaseStatusPill" title="Connected to Supabase Cloud Database (sxbnutustirzmesuillx)">
         <span class="status-dot"></span>
         <span class="status-text">Supabase Connected</span>
@@ -64,10 +64,10 @@
   <!-- Hero Banner -->
   <section class="hero-banner">
     <div class="hero-pill">
-      <span>✨</span> Game On: Imagine the Impossible 2026
+      <span>✨</span> Google Student Ambassador Program 2026
     </div>
     <h1>Certificate Generation & Request Portal</h1>
-    <p>Session Attendance: <strong>Game On: Imagine the Impossible</strong>. Request, generate, and verify your participation certificates.</p>
+    <p>Session Attendance: <strong>Product understanding semester at Virtual(Google meet)</strong>. Request, generate, and verify your participation certificates.</p>
   </section>
 
   <!-- Main Content Body -->
@@ -634,6 +634,45 @@
           </div>
         </div>
 
+        <!-- Event & Certificate Details Configuration Card -->
+        <div class="card" style="margin-top: 1.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.75rem;">
+            <div>
+              <h3 class="card-title" style="margin-bottom: 0.25rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                Certificate Content &amp; Event Configuration
+              </h3>
+              <p class="card-subtitle" style="margin-bottom: 0;">Configure the Initiative Name and Venue/Platform printed on all attendee certificates:</p>
+            </div>
+          </div>
+
+          <div style="background: var(--card-subtle); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 1.25rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="adminInitiativeNameInput" style="font-weight: 700; color: #60a5fa;">
+                  Initiative Name
+                </label>
+                <input type="text" id="adminInitiativeNameInput" class="form-control" value="Product understanding" placeholder="e.g. Product understanding" style="font-weight: 500;">
+                <div class="form-hint" style="margin-top: 0.35rem;">Fills in: <em>"participated in <strong>[Initiative Name]</strong>"</em> and bottom <em>"Initiative Name"</em> line.</div>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="adminVenuePlatformInput" style="font-weight: 700; color: #60a5fa;">
+                  Venue / Platform
+                </label>
+                <input type="text" id="adminVenuePlatformInput" class="form-control" value="Virtual(Google meet)" placeholder="e.g. Virtual(Google meet)" style="font-weight: 500;">
+                <div class="form-hint" style="margin-top: 0.35rem;">Fills in: <em>"Semester 2 at <strong>[Venue / Platform]</strong>"</em>.</div>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+              <button class="nav-btn-primary" id="btnSaveEventDetails" style="padding: 0.6rem 1.4rem; font-size: 0.88rem; border-radius: 6px; border: none; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;" onclick="handleSaveEventSettings()">
+                <span>💾 Save Event Details</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Certificate Master Template Management Card -->
         <div class="card" style="margin-top: 1.5rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.75rem;">
@@ -707,7 +746,7 @@
 
   <!-- Footer -->
   <footer class="footer">
-    <div>Game On: Imagine the Impossible 2026 • Certificate Portal</div>
+    <div>Google Student Ambassador Program 2026 • Product Understanding</div>
     <div style="margin-top: 0.25rem; font-size: 0.75rem; color: var(--text-muted);">
       Authorized Signatories: ASWIN ASOK KV (14248) • Paulbin Chacko (12348) • THOMAS P D (14434)
     </div>

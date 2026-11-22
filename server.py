@@ -122,7 +122,7 @@ def send_certificate_email(to_email, full_name, cert_id, event_name, speaker_nam
                 Google Student Ambassador Program
               </h1>
               <p style="margin: 0; font-size: 15px; font-weight: 500; color: #e8f0fe;">
-                Build Your Fest Stall Edition • Game On: Imagine the Impossible
+                Google Student Ambassador Program • Product understanding
               </p>
             </td>
           </tr>
@@ -280,7 +280,7 @@ def send_certificate_email(to_email, full_name, cert_id, event_name, speaker_nam
                     import subprocess
                     subprocess.run([
                         "powershell", "-ExecutionPolicy", "Bypass", "-File", script_path,
-                        full_name, event_date, speaker_id, rendered_path
+                        full_name, event_date, speaker_id, rendered_path, event_name
                     ], capture_output=True, timeout=25)
                     if os.path.exists(rendered_path):
                         with open(rendered_path, "rb") as f:
@@ -452,7 +452,7 @@ def map_db_to_request(row):
         "speakerName": row.get("speaker_name"),
         "speakerGid": row.get("speaker_gid"),
         "eventDate": row.get("event_date", "08/10/2026"),
-        "eventName": row.get("event_name", "Game On: Imagine the Impossible"),
+        "eventName": row.get("event_name", "Product understanding"),
         "requestDate": row.get("request_date"),
         "status": row.get("status", "Requested"),
         "downloadCount": row.get("download_count", 0)
@@ -468,7 +468,7 @@ def map_request_to_db(req):
         "speaker_name": req.get("speakerName"),
         "speaker_gid": req.get("speakerGid"),
         "event_date": req.get("eventDate", "08/10/2026"),
-        "event_name": req.get("eventName", "Game On: Imagine the Impossible"),
+        "event_name": req.get("eventName", "Product understanding"),
         "request_date": req.get("requestDate"),
         "status": req.get("status", "Requested"),
         "download_count": req.get("downloadCount", 0)
@@ -759,7 +759,7 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
             to_email = payload.get("email", "").strip()
             full_name = payload.get("fullName", "").strip()
             cert_id = payload.get("certId", "").strip()
-            event_name = payload.get("eventName", "Game On: Imagine the Impossible")
+            event_name = payload.get("eventName", "Product understanding")
             speaker_name = payload.get("speakerName", "Google Student Ambassador")
             speaker_id = payload.get("speakerId", "admin1")
             event_date = payload.get("eventDate", "08/10/2026")
@@ -814,7 +814,7 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
                 "speakerName": admin_info["name"],
                 "speakerGid": admin_info["gid"],
                 "eventDate": payload.get("eventDate", "08/10/2026").strip() or "08/10/2026",
-                "eventName": "Game On: Imagine the Impossible",
+                "eventName": "Product understanding",
                 "requestDate": datetime.now().strftime("%Y-%m-%d %H:%M"),
                 "status": payload.get("status", "Requested"),
                 "downloadCount": payload.get("downloadCount", 0),
@@ -961,7 +961,7 @@ class CertificateHandler(http.server.SimpleHTTPRequestHandler):
                 return self._send_json(400, {"success": False, "message": "No email address found for this certificate"})
 
             full_name = req.get("fullName", "Participant")
-            event_name = req.get("eventName", "Game On: Imagine the Impossible")
+            event_name = req.get("eventName", "Product understanding")
             speaker_name = req.get("speakerName", "Google Student Ambassador")
             speaker_id = req.get("speakerId", "admin1")
             event_date = req.get("eventDate", "08/10/2026")

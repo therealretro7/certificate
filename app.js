@@ -55,7 +55,7 @@ function mapDbToRequest(row) {
     speakerName: row.speaker_name,
     speakerGid: row.speaker_gid,
     eventDate: row.event_date || "08/10/2026",
-    eventName: row.event_name || "Game On: Imagine the Impossible",
+    eventName: row.event_name || "Product understanding",
     requestDate: row.request_date,
     status: row.status || "Requested",
     downloadCount: row.download_count || 0
@@ -72,7 +72,7 @@ function mapRequestToDb(req) {
     speaker_name: req.speakerName,
     speaker_gid: req.speakerGid,
     event_date: req.eventDate || "08/10/2026",
-    event_name: req.eventName || "Game On: Imagine the Impossible",
+    event_name: req.eventName || "Product understanding",
     request_date: req.requestDate,
     status: req.status || "Requested",
     download_count: req.downloadCount || 0
@@ -102,12 +102,53 @@ async function sbLoadRequests() {
       } catch (e) {}
     }
 
-    return rows.filter(r => r.id !== "CONFIG_SPEAKER_KEYS").map(mapDbToRequest);
+    // Automatically load & sync persistent Event & Certificate Settings from Supabase
+    const eventConfigRow = rows.find(r => r.id === "CONFIG_EVENT_SETTINGS");
+    if (eventConfigRow && eventConfigRow.email) {
+      try {
+        const savedEvent = JSON.parse(eventConfigRow.email);
+        if (savedEvent.initiativeName) state.eventSettings.initiativeName = savedEvent.initiativeName;
+        if (savedEvent.sessionLocation) state.eventSettings.sessionLocation = savedEvent.sessionLocation;
+        localStorage.setItem("gsa_event_settings", JSON.stringify(state.eventSettings));
+        const aInit = document.getElementById("adminInitiativeNameInput");
+        const aVen = document.getElementById("adminVenuePlatformInput");
+        if (aInit) aInit.value = state.eventSettings.initiativeName;
+        if (aVen) aVen.value = state.eventSettings.sessionLocation;
+        renderCertificate();
+      } catch (e) {}
+    }
+
+    return rows.filter(r => r.id !== "CONFIG_SPEAKER_KEYS" && r.id !== "CONFIG_EVENT_SETTINGS").map(mapDbToRequest);
   } catch (err) {
     console.warn("Supabase read failed, using local fallback:", err);
     const local = localStorage.getItem("gsa_cert_requests");
     const parsed = local ? JSON.parse(local) : [];
-    return parsed.filter(r => r.id !== "CONFIG_SPEAKER_KEYS");
+    return parsed.filter(r => r.id !== "CONFIG_SPEAKER_KEYS" && r.id !== "CONFIG_EVENT_SETTINGS");
+  }
+}
+
+async function sbSaveEventSettings(settings) {
+  try {
+    await sbFetch("/rest/v1/certificate_requests", "POST", [{
+      id: "CONFIG_EVENT_SETTINGS",
+      full_name: "EVENT_CONFIG",
+      email: JSON.stringify(settings),
+      college: "CONFIG",
+      speaker_id: "system",
+      speaker_name: "Event Settings",
+      speaker_gid: "00000",
+      event_date: "2026-11-22",
+      event_name: settings.initiativeName || "Product understanding",
+      request_date: new Date().toISOString().replace("T", " ").slice(0, 16),
+      status: "Config",
+      download_count: 0
+    }], {
+      "Prefer": "resolution=merge-duplicates,return=representation"
+    });
+    return true;
+  } catch (err) {
+    console.warn("Could not save event settings to Supabase:", err);
+    return false;
   }
 }
 
@@ -226,6 +267,8 @@ const ADMIN_CONFIG = {
 };
 
 // Global App State
+const savedEventSettings = JSON.parse(localStorage.getItem("gsa_event_settings") || "{}");
+
 const state = {
   currentAdmin: null,
   requests: [],
@@ -234,6 +277,10 @@ const state = {
     speaker: "all",
     status: "all",
     search: ""
+  },
+  eventSettings: {
+    initiativeName: savedEventSettings.initiativeName || "Product understanding",
+    sessionLocation: savedEventSettings.sessionLocation || "Virtual(Google meet)"
   },
   loadedImages: {},
   canvasReady: false
@@ -383,8 +430,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 // Preload Template & Signature Images for Canvas
 async function preloadAssets() {
+  // Preload local GoogleSans-Bold.ttf font
+  try {
+    const f1 = new FontFace("Google Sans Bold", "url(GoogleSans-Bold.ttf)");
+    const loadedF1 = await f1.load();
+    document.fonts.add(loadedF1);
+
+    const f2 = new FontFace("Google Sans", "url(GoogleSans-Bold.ttf)", { weight: "700" });
+    const loadedF2 = await f2.load();
+    document.fonts.add(loadedF2);
+
+    await document.fonts.ready;
+  } catch (fontErr) {
+    console.warn("Could not preload GoogleSans-Bold.ttf via FontFace API:", fontErr);
+  }
+
   const imagesToLoad = {
-    template: "template_clean_2x.png",
+    template: "template_clean_2x.png?v=" + Date.now(),
     admin1Sig: ADMIN_CONFIG.admin1.signatureFile,
     admin2Sig: ADMIN_CONFIG.admin2.signatureFile,
     admin3Sig: ADMIN_CONFIG.admin3.signatureFile
@@ -626,10 +688,12 @@ function renderCertificate(targetCanvas = elements.certificateCanvas, certData =
   const H = targetCanvas.height;   // 1476
 
   // Resolve Data
-  const speaker = certData ? ADMIN_CONFIG[certData.speakerId] : getSelectedSpeaker();
-  const name    = certData ? certData.fullName  : (elements.participantName.value.trim() || "Participant Name");
-  const date    = certData ? certData.eventDate : (elements.sessionDate.value.trim() || "08/10/2026");
-  const certId  = certData ? certData.id        : state.currentCertId;
+  const speaker    = certData ? ADMIN_CONFIG[certData.speakerId] : getSelectedSpeaker();
+  const name       = certData ? certData.fullName  : (elements.participantName.value.trim() || "Participant Name");
+  const date       = certData ? certData.eventDate : (elements.sessionDate.value.trim() || "08/10/2026");
+  const initiative = certData?.eventName || certData?.initiativeName || state.eventSettings.initiativeName || "Product understanding";
+  const location   = certData?.sessionLocation || state.eventSettings.sessionLocation || "Virtual(Google meet)";
+  const certId     = certData ? certData.id        : state.currentCertId;
 
   if (targetCanvas === elements.certificateCanvas) {
     elements.currentCertIdDisplay.textContent = certId;
@@ -648,42 +712,78 @@ function renderCertificate(targetCanvas = elements.certificateCanvas, certData =
   }
 
   // 2. Draw Recipient Name (Centered over name line)
-  // In 2048x1476 space: underline is at Y = 784, center X = 1024
+  // In 2048x1476 space: underline is at Y = 660, center X = 1024
   ctx.save();
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = "#111111";
 
-  // Dynamic font sizing
-  let nameFontSize = 54;
-  if (name.length > 28) nameFontSize = 36;
-  else if (name.length > 20) nameFontSize = 44;
+  // Dynamic font sizing (using GoogleSans-Bold)
+  let nameFontSize = 64;
+  if (name.length > 28) nameFontSize = 46;
+  else if (name.length > 20) nameFontSize = 54;
 
-  ctx.font = `italic 600 ${nameFontSize}px "Playfair Display", "Times New Roman", Georgia, serif`;
-  ctx.fillText(name, W / 2, 768);
+  ctx.font = `bold ${nameFontSize}px "Google Sans Bold", "Google Sans", Arial, sans-serif`;
+  ctx.fillText(name, W / 2, 646);
   ctx.restore();
 
-  // 3. Draw Event Date (Left Side over Date underline)
-  // In 2048x1476 space: center X = 376, underline is at Y = 1258
+  // 3. Draw "participated in [Product understanding]"
+  // Underline at Y = 820, StartX = 566, EndX = 1352, CenterX = 959
   ctx.save();
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = "#111111";
-  ctx.font = 'bold 28px "Google Sans", Arial, sans-serif';
-  ctx.fillText(date, 376, 1242);
+  let initFontSize = 44;
+  if (initiative.length > 30) initFontSize = 34;
+  ctx.font = `bold ${initFontSize}px "Google Sans Bold", "Google Sans", Arial, sans-serif`;
+  ctx.fillText(initiative, 959, 810);
   ctx.restore();
 
-  // 4. Draw Signature & Speaker Details (Right Side)
-  // In 2048x1476 space: center X = 1670, underline is at Y = 1258
-  const sigCX = 1670;
+  // 4. Draw "Semester 2 at [Virtual(Google meet)]"
+  // Underline at Y = 910, StartX = 1296, EndX = 1856, CenterX = 1576
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#111111";
+  let locFontSize = 36;
+  if (location.length > 24) locFontSize = 28;
+  ctx.font = `bold ${locFontSize}px "Google Sans Bold", "Google Sans", Arial, sans-serif`;
+  ctx.fillText(location, 1576, 900);
+  ctx.restore();
+
+  // 5. Draw Event Date (Left Side over Date underline)
+  // Underline at Y = 1280, StartX = 268, EndX = 668, CenterX = 468
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#111111";
+  ctx.font = 'bold 30px "Google Sans Bold", "Google Sans", Arial, sans-serif';
+  ctx.fillText(date, 468, 1264);
+  ctx.restore();
+
+  // 6. Draw Initiative Name (Center Side over Initiative Name underline)
+  // Underline at Y = 1280, StartX = 824, EndX = 1222, CenterX = 1024
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#111111";
+  let bottomInitSize = 26;
+  if (initiative.length > 25) bottomInitSize = 22;
+  ctx.font = `bold ${bottomInitSize}px "Google Sans Bold", "Google Sans", Arial, sans-serif`;
+  ctx.fillText(initiative, 1024, 1264);
+  ctx.restore();
+
+  // 7. Draw Authorized Signature (Right Side over Authorized Signature underline)
+  // Underline at Y = 1280, StartX = 1378, EndX = 1778, CenterX = 1578
+  const sigCX = 1578;
   const sigImgKey = `${speaker.id}Sig`;
   const sigImg = state.loadedImages[sigImgKey];
 
   if (sigImg && sigImg.complete && sigImg.naturalWidth > 10) {
     ctx.save();
-    const sigW = 240, sigH = 84;
+    const sigW = 220, sigH = 75;
     const sigX = sigCX - sigW / 2;
-    const sigY = 1096;
+    const sigY = 1272 - sigH;
     ctx.drawImage(sigImg, sigX, sigY, sigW, sigH);
     ctx.restore();
   } else {
@@ -692,26 +792,12 @@ function renderCertificate(targetCanvas = elements.certificateCanvas, certData =
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
     ctx.fillStyle = "#1a237e";
-    ctx.font = 'italic 700 46px "Dancing Script", "Segoe Script", cursive';
-    ctx.fillText(speaker.displayName, sigCX, 1148);
+    ctx.font = 'italic 700 38px "Dancing Script", "Segoe Script", cursive';
+    ctx.fillText(speaker.displayName, sigCX, 1260);
     ctx.restore();
   }
 
-  // Speaker Name (Text right above subtitle)
-  ctx.save();
-  ctx.textAlign = "center";
-  ctx.textBaseline = "alphabetic";
-  ctx.fillStyle = "#202124";
-  ctx.font = '500 24px "Google Sans", Roboto, sans-serif';
-  ctx.fillText(speaker.displayName, sigCX, 1205);
-
-  // Subtitle "Session Speaker"
-  ctx.fillStyle = "#3c4043";
-  ctx.font = '400 19px "Google Sans", Roboto, sans-serif';
-  ctx.fillText(speaker.role || "Session Speaker", sigCX, 1238);
-  ctx.restore();
-
-  // 6. Draw GID at Bottom-Right Corner
+  // 8. Draw GID at Bottom-Right Corner
   ctx.save();
   ctx.textAlign = "right";
   ctx.textBaseline = "alphabetic";
@@ -806,6 +892,9 @@ async function handleCertificateRequest() {
   // Render certificate first to ensure canvas has updated pixels for email dispatch
   renderCertificate();
 
+  const currentEventName = state.eventSettings.initiativeName || "Product understanding";
+  const currentSessionLocation = state.eventSettings.sessionLocation || "Virtual(Google meet)";
+
   const newRequest = {
     id: certId,
     fullName: name,
@@ -815,7 +904,8 @@ async function handleCertificateRequest() {
     speakerName: speaker.name,
     speakerGid: speaker.gid,
     eventDate: eventDate,
-    eventName: "Game On: Imagine the Impossible",
+    eventName: currentEventName,
+    sessionLocation: currentSessionLocation,
     requestDate: new Date().toISOString().replace("T", " ").slice(0, 16),
     status: "Email Sent",
     downloadCount: 0,
@@ -850,7 +940,7 @@ async function handleCertificateRequest() {
           email: email,
           fullName: name,
           certId: certId,
-          eventName: "Game On: Imagine the Impossible",
+          eventName: currentEventName,
           speakerName: speaker.name,
           speakerId: speaker.id,
           eventDate: eventDate,
@@ -869,7 +959,7 @@ async function handleCertificateRequest() {
               email: email,
               fullName: name,
               certId: certId,
-              eventName: "Game On: Imagine the Impossible",
+              eventName: currentEventName,
               speakerName: speaker.name,
               speakerId: speaker.id,
               eventDate: eventDate,
@@ -1011,7 +1101,7 @@ async function runVerification(certId) {
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
         <div>
           <div style="font-size: 1.15rem; font-weight: 700;">Certificate Verified ✓</div>
-          <div style="font-size: 0.8rem; color: #137333;">Game On: Imagine the Impossible 2026 • Verified via Supabase ☁️</div>
+          <div style="font-size: 0.8rem; color: #137333;">Google Student Ambassador Program • Product understanding</div>
         </div>
       </div>
 
@@ -1025,8 +1115,8 @@ async function runVerification(certId) {
         <span style="color: var(--text-muted); font-weight: 500;">Session Speaker:</span>
         <span><strong>${speaker.name}</strong> (GID: ${speaker.gid})</span>
 
-        <span style="color: var(--text-muted); font-weight: 500;">Event:</span>
-        <span>Game On: Imagine the Impossible</span>
+        <span style="color: var(--text-muted); font-weight: 500;">Initiative / Event:</span>
+        <span>${escapeHtml(found.eventName || "Product understanding")}</span>
 
         <span style="color: var(--text-muted); font-weight: 500;">Session Date:</span>
         <span>${found.eventDate || "08/10/2026"}</span>
@@ -1174,6 +1264,12 @@ function updateAdminView() {
       badge.textContent = state.currentAdmin.name;
       badge.style.background = state.currentAdmin.color || "#1a73e8";
     }
+
+    // Populate Event & Certificate Settings in Admin Portal
+    const adminInitInput = document.getElementById("adminInitiativeNameInput");
+    const adminVenueInput = document.getElementById("adminVenuePlatformInput");
+    if (adminInitInput) adminInitInput.value = state.eventSettings.initiativeName || "Product understanding";
+    if (adminVenueInput) adminVenueInput.value = state.eventSettings.sessionLocation || "Virtual(Google meet)";
 
     // Reload fresh from Supabase each time admin opens dashboard
     loadRequests().then(() => {
@@ -1610,6 +1706,24 @@ window.handleCopyMyKey = function () {
   }).catch(() => {
     showToast(`Your session key: ${key}`);
   });
+};
+
+// Save Event & Certificate Configuration (Initiative Name & Venue/Platform)
+window.handleSaveEventSettings = async function () {
+  const adminInitInput = document.getElementById("adminInitiativeNameInput");
+  const adminVenueInput = document.getElementById("adminVenuePlatformInput");
+  const newInit = (adminInitInput?.value.trim()) || "Product understanding";
+  const newVenue = (adminVenueInput?.value.trim()) || "Virtual(Google meet)";
+
+  state.eventSettings.initiativeName = newInit;
+  state.eventSettings.sessionLocation = newVenue;
+  localStorage.setItem("gsa_event_settings", JSON.stringify(state.eventSettings));
+
+  showToast("Saving event settings... ⏳");
+  await sbSaveEventSettings(state.eventSettings);
+
+  renderCertificate();
+  showToast("Event details saved & applied to all certificates! ✨");
 };
 
 // 3. Copy Session Key to Clipboard

@@ -4,3 +4,5 @@ __pycache__/
 .vscode/
 .idea/
 dispatched_emails.json
+*.bak
+sample_rendered_cert.png

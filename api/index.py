@@ -164,7 +164,7 @@ def send_certificate_email(to_email, full_name, cert_id, event_name, speaker_nam
                 Google Student Ambassador Program
               </h1>
               <p style="margin: 0; font-size: 15px; font-weight: 500; color: #e8f0fe;">
-                Build Your Fest Stall Edition • Game On: Imagine the Impossible
+                Google Student Ambassador Program • Product understanding
               </p>
             </td>
           </tr>
@@ -408,7 +408,7 @@ class handler(BaseHTTPRequestHandler):
             to_email = payload.get("email", "").strip()
             full_name = payload.get("fullName", "").strip()
             cert_id = payload.get("certId", "").strip()
-            event_name = payload.get("eventName", "Game On: Imagine the Impossible")
+            event_name = payload.get("eventName", "Product understanding")
             speaker_name = payload.get("speakerName", "Google Student Ambassador")
             speaker_id = payload.get("speakerId", "admin1")
             event_date = payload.get("eventDate", "08/10/2026")
@@ -441,7 +441,7 @@ class handler(BaseHTTPRequestHandler):
             speaker_id = payload.get("speakerId", "admin1")
             speaker_name = payload.get("speakerName", "Google Student Ambassador")
             full_name = payload.get("fullName", "Participant")
-            event_name = payload.get("eventName", "Game On: Imagine the Impossible")
+            event_name = payload.get("eventName", "Product understanding")
             event_date = payload.get("eventDate", "08/10/2026")
             image_data = payload.get("imageData")
 
