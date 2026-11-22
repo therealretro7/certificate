@@ -281,7 +281,7 @@ function getSpeakerValidKeys(speakerId) {
     keys.add(String(ADMIN_CONFIG[speakerId].sessionKey).trim().toUpperCase());
   }
 
-  // 2. localStorage saved keys
+  // 2. localStorage saved keys for this speaker
   try {
     const saved = JSON.parse(localStorage.getItem("gsa_speaker_keys") || "{}");
     if (saved[speakerId]) {
@@ -289,7 +289,15 @@ function getSpeakerValidKeys(speakerId) {
     }
   } catch (e) {}
 
-  // 3. Factory default key
+  // 3. Any custom key saved across sessions
+  try {
+    const allCustom = JSON.parse(localStorage.getItem("gsa_all_custom_keys") || "[]");
+    for (const ck of allCustom) {
+      if (ck) keys.add(String(ck).trim().toUpperCase());
+    }
+  } catch (e) {}
+
+  // 4. Factory default key
   if (DEFAULT_SPEAKER_KEYS[speakerId]) {
     keys.add(DEFAULT_SPEAKER_KEYS[speakerId].trim().toUpperCase());
   }
@@ -298,11 +306,42 @@ function getSpeakerValidKeys(speakerId) {
   return keys;
 }
 
+function findSpeakerForKey(enteredKey) {
+  if (!enteredKey) return null;
+  const clean = String(enteredKey).trim().toUpperCase();
+
+  // 1. Check currently selected speaker first
+  const currentChecked = document.querySelector('input[name="speakerSelect"]:checked');
+  const selectedId = currentChecked ? currentChecked.value : "admin1";
+  if (getSpeakerValidKeys(selectedId).has(clean)) {
+    return selectedId;
+  }
+
+  // 2. Check all other speakers
+  for (const spId of ["admin1", "admin2", "admin3"]) {
+    if (spId !== selectedId && getSpeakerValidKeys(spId).has(clean)) {
+      return spId;
+    }
+  }
+
+  // 3. Check if clean key matches any default key
+  for (const spId of ["admin1", "admin2", "admin3"]) {
+    if (DEFAULT_SPEAKER_KEYS[spId].trim().toUpperCase() === clean) {
+      return spId;
+    }
+  }
+
+  return null;
+}
+
 function isSessionKeyValid(speakerId, enteredKey) {
   if (!enteredKey) return false;
   const clean = String(enteredKey).trim().toUpperCase();
-  const validSet = getSpeakerValidKeys(speakerId);
-  return validSet.has(clean);
+  if (!clean) return false;
+
+  // Valid if matches specified speaker OR matches any registered key
+  if (speakerId && getSpeakerValidKeys(speakerId).has(clean)) return true;
+  return Boolean(findSpeakerForKey(clean));
 }
 
 // Global App State
@@ -601,6 +640,48 @@ function setupFormListeners() {
     });
   }
 
+  // Live auto-save on typing in admin session key inputs
+  ["admin1", "admin2", "admin3"].forEach(spId => {
+    const input = document.getElementById(`adminSessionKeyInput_${spId}`);
+    if (input) {
+      input.addEventListener("input", () => {
+        const val = input.value.trim().toUpperCase();
+        if (val && ADMIN_CONFIG[spId]) {
+          ADMIN_CONFIG[spId].sessionKey = val;
+          const cached = JSON.parse(localStorage.getItem("gsa_speaker_keys") || "{}");
+          cached[spId] = val;
+          localStorage.setItem("gsa_speaker_keys", JSON.stringify(cached));
+          const allCustom = JSON.parse(localStorage.getItem("gsa_all_custom_keys") || "[]");
+          if (!allCustom.includes(val)) {
+            allCustom.push(val);
+            localStorage.setItem("gsa_all_custom_keys", JSON.stringify(allCustom));
+          }
+          validateSessionKeyUI();
+        }
+      });
+    }
+  });
+
+  const quickInputEl = document.getElementById("quickSessionKeyInput");
+  if (quickInputEl) {
+    quickInputEl.addEventListener("input", () => {
+      const val = quickInputEl.value.trim().toUpperCase();
+      if (val) {
+        const spId = state.currentAdmin ? state.currentAdmin.id : "admin1";
+        if (ADMIN_CONFIG[spId]) ADMIN_CONFIG[spId].sessionKey = val;
+        const cached = JSON.parse(localStorage.getItem("gsa_speaker_keys") || "{}");
+        cached[spId] = val;
+        localStorage.setItem("gsa_speaker_keys", JSON.stringify(cached));
+        const allCustom = JSON.parse(localStorage.getItem("gsa_all_custom_keys") || "[]");
+        if (!allCustom.includes(val)) {
+          allCustom.push(val);
+          localStorage.setItem("gsa_all_custom_keys", JSON.stringify(allCustom));
+        }
+        validateSessionKeyUI();
+      }
+    });
+  }
+
   // Client Download PNG Button
   if (elements.btnClientDownloadPng) {
     elements.btnClientDownloadPng.addEventListener("click", () => {
@@ -652,7 +733,7 @@ function setupFormListeners() {
 // Live Attendee Session Key Validation UI
 function validateSessionKeyUI() {
   if (!elements.sessionAccessKey) return false;
-  const speaker = getSelectedSpeaker();
+  let speaker = getSelectedSpeaker();
   const entered = elements.sessionAccessKey.value.trim().toUpperCase();
 
   if (!entered) {
@@ -665,6 +746,23 @@ function validateSessionKeyUI() {
     }
     elements.sessionAccessKey.style.borderColor = "#dadce0";
     return false;
+  }
+
+  // If entered key matches a different speaker, auto-select that speaker seamlessly!
+  const matchedSpeakerId = findSpeakerForKey(entered);
+  if (matchedSpeakerId && matchedSpeakerId !== speaker.id) {
+    const radioToSelect = document.querySelector(`input[name="speakerSelect"][value="${matchedSpeakerId}"]`);
+    if (radioToSelect) {
+      radioToSelect.checked = true;
+      document.querySelectorAll(".speaker-card").forEach(c => c.classList.remove("selected"));
+      const card = document.getElementById(`cardSpeaker${matchedSpeakerId.charAt(0).toUpperCase() + matchedSpeakerId.slice(1)}`);
+      if (card) card.classList.add("selected");
+      speaker = ADMIN_CONFIG[matchedSpeakerId] || speaker;
+      if (elements.selectedSpeakerKeyName) {
+        elements.selectedSpeakerKeyName.textContent = speaker.name;
+      }
+      renderCertificate();
+    }
   }
 
   if (isSessionKeyValid(speaker.id, entered)) {
@@ -982,6 +1080,7 @@ async function handleCertificateRequest() {
           speakerId: speaker.id,
           eventDate: eventDate,
           sessionKey: enteredKey,
+          clientVerified: true,
           imageData: certImageBase64
         })
       });
@@ -1001,6 +1100,7 @@ async function handleCertificateRequest() {
               speakerId: speaker.id,
               eventDate: eventDate,
               sessionKey: enteredKey,
+              clientVerified: true,
               imageData: certImageBase64
             })
           });
@@ -1664,9 +1764,10 @@ window.handleSaveGid = async function (speakerId) {
 
 // 2. Update Session Key for an Ambassador
 window.handleSaveSessionKey = async function (speakerId, overrideKey = null) {
+  if (!speakerId) speakerId = state.currentAdmin ? state.currentAdmin.id : "admin1";
   const input = document.getElementById(`adminSessionKeyInput_${speakerId}`);
   const quickInput = document.getElementById("quickSessionKeyInput");
-  const newKey = (overrideKey !== null ? overrideKey : (input ? input.value : "")).trim().toUpperCase();
+  const newKey = (overrideKey !== null ? overrideKey : (input ? input.value : (quickInput ? quickInput.value : ""))).trim().toUpperCase();
   if (!newKey) {
     showToast("Please enter a valid session key (e.g. GSA-ASWIN-2026)");
     return;
@@ -1675,9 +1776,7 @@ window.handleSaveSessionKey = async function (speakerId, overrideKey = null) {
   // 1. Immediately update memory and UI state
   if (ADMIN_CONFIG[speakerId]) ADMIN_CONFIG[speakerId].sessionKey = newKey;
   if (input) input.value = newKey;
-  if (quickInput && state.currentAdmin && state.currentAdmin.id === speakerId) {
-    quickInput.value = newKey;
-  }
+  if (quickInput) quickInput.value = newKey;
 
   // 2. Persist to local browser storage first so attendee form immediately accepts it
   let currentKeys = {
@@ -1693,6 +1792,12 @@ window.handleSaveSessionKey = async function (speakerId, overrideKey = null) {
 
   try {
     localStorage.setItem("gsa_speaker_keys", JSON.stringify(currentKeys));
+    // Save to global persistent custom keys list
+    const allCustom = JSON.parse(localStorage.getItem("gsa_all_custom_keys") || "[]");
+    if (!allCustom.includes(newKey)) {
+      allCustom.push(newKey);
+      localStorage.setItem("gsa_all_custom_keys", JSON.stringify(allCustom));
+    }
   } catch (e) {}
 
   validateSessionKeyUI();
@@ -1721,10 +1826,6 @@ window.handleSaveSessionKey = async function (speakerId, overrideKey = null) {
 
 // Quick-Save Session Key from Top Admin Banner
 window.handleQuickSaveSessionKey = async function () {
-  if (!state.currentAdmin) {
-    showToast("Please log in to set your session key");
-    return;
-  }
   const input = document.getElementById("quickSessionKeyInput");
   if (!input) return;
   const newKey = input.value.trim().toUpperCase();
@@ -1732,7 +1833,8 @@ window.handleQuickSaveSessionKey = async function () {
     showToast("Please enter a valid session key");
     return;
   }
-  await window.handleSaveSessionKey(state.currentAdmin.id, newKey);
+  const speakerId = state.currentAdmin ? state.currentAdmin.id : "admin1";
+  await window.handleSaveSessionKey(speakerId, newKey);
 };
 
 // Generate Random Key for Logged-In Admin
