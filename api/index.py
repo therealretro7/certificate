@@ -47,7 +47,10 @@ ADMIN_ACCOUNTS = {
 SUPABASE_URL = "https://sxbnutustirzmesuillx.supabase.co"
 SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN4Ym51dHVzdGlyem1lc3VpbGx4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5NDkwNTAxNywiZXhwIjoyMTEwNDgxMDE3fQ.C2vt8FI3NiuCh_8quwMpM9kbA1Xiv-G5BUOejkkvK00"
 
+SUPABASE_CACHED_KEYS = {}
+
 def sync_supabase_keys():
+    global SUPABASE_CACHED_KEYS
     try:
         url = f"{SUPABASE_URL}/rest/v1/certificate_requests?id=eq.CONFIG_SPEAKER_KEYS&select=email"
         headers = {"apikey": SUPABASE_SERVICE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"}
@@ -57,14 +60,17 @@ def sync_supabase_keys():
             if data and len(data) > 0 and data[0].get("email"):
                 keys = json.loads(data[0]["email"])
                 for k, key_val in keys.items():
-                    if k in ADMIN_ACCOUNTS and key_val:
-                        ADMIN_ACCOUNTS[k]["sessionKey"] = str(key_val).strip().upper()
+                    if key_val:
+                        cleaned = str(key_val).strip().upper()
+                        SUPABASE_CACHED_KEYS[k] = cleaned
+                        if k in ADMIN_ACCOUNTS:
+                            ADMIN_ACCOUNTS[k]["sessionKey"] = cleaned
     except Exception:
         pass
 
 def save_supabase_keys(keys_dict):
     try:
-        url = f"{SUPABASE_URL}/rest/v1/certificate_requests"
+        url = f"{SUPABASE_URL}/rest/v1/certificate_requests?on_conflict=id"
         headers = {
             "apikey": SUPABASE_SERVICE_KEY,
             "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
@@ -90,6 +96,72 @@ def save_supabase_keys(keys_dict):
             pass
     except Exception:
         pass
+
+DEFAULT_SPEAKER_KEYS = {
+    "admin1": "GSA-ASWIN-2026",
+    "admin2": "GSA-PAULBIN-2026",
+    "admin3": "GSA-THOMAS-2026"
+}
+
+def get_speaker_valid_keys(speaker_id):
+    """
+    Returns a set of valid session keys for a speaker, checking:
+    1. Factory default key
+    2. Current in-memory sessionKey
+    3. Cached Supabase key
+    4. admin_settings.json file
+    """
+    keys = set()
+    speaker_id = str(speaker_id).strip()
+    if not speaker_id:
+        return keys
+
+    # 1. Default key
+    if speaker_id in DEFAULT_SPEAKER_KEYS:
+        keys.add(DEFAULT_SPEAKER_KEYS[speaker_id].strip().upper())
+
+    # 2. In-memory ADMIN_ACCOUNTS dict
+    adm = ADMIN_ACCOUNTS.get(speaker_id)
+    if adm and adm.get("sessionKey"):
+        keys.add(str(adm.get("sessionKey")).strip().upper())
+
+    # 3. Supabase cached key
+    if speaker_id in SUPABASE_CACHED_KEYS:
+        keys.add(SUPABASE_CACHED_KEYS[speaker_id].strip().upper())
+
+    # 4. Read settings file
+    for p in [SETTINGS_FILE, TMP_SETTINGS_FILE]:
+        try:
+            if os.path.exists(p):
+                with open(p, "r", encoding="utf-8") as f:
+                    saved = json.load(f)
+                    file_key = saved.get("admins", {}).get(speaker_id, {}).get("sessionKey")
+                    if file_key:
+                        keys.add(str(file_key).strip().upper())
+        except Exception:
+            pass
+
+    keys.discard("")
+    return keys
+
+def is_valid_session_key(speaker_id, key):
+    if not key or not speaker_id:
+        return False
+    clean_key = str(key).strip().upper()
+    valid_keys = get_speaker_valid_keys(speaker_id)
+    if clean_key in valid_keys:
+        return True
+
+    # If not in local cache/settings, query Supabase once to refresh
+    try:
+        sync_supabase_keys()
+        valid_keys = get_speaker_valid_keys(speaker_id)
+        if clean_key in valid_keys:
+            return True
+    except Exception:
+        pass
+
+    return False
 
 def load_admin_settings():
     for fpath in [TMP_SETTINGS_FILE, SETTINGS_FILE]:
@@ -373,15 +445,13 @@ class handler(BaseHTTPRequestHandler):
                 }
             })
         elif path in ["/api/validate-key", "/validate-key"]:
-            sync_supabase_keys()
             query = urllib.parse.parse_qs(parsed.query)
             speaker_id = query.get("speakerId", [""])[0].strip()
             key = query.get("key", [""])[0].strip().upper()
             adm = ADMIN_ACCOUNTS.get(speaker_id)
             if not adm:
                 return self._send_json(400, {"success": False, "valid": False, "message": "Unknown speaker"})
-            required_key = str(adm.get("sessionKey", "")).strip().upper()
-            is_valid = bool(key and required_key and key == required_key)
+            is_valid = is_valid_session_key(speaker_id, key)
             return self._send_json(200, {
                 "success": True,
                 "valid": is_valid,
@@ -423,14 +493,13 @@ class handler(BaseHTTPRequestHandler):
 
             # Enforce Speaker Session Access Key
             adm = ADMIN_ACCOUNTS.get(speaker_id)
-            if adm:
-                required_key = str(adm.get("sessionKey", "")).strip().upper()
-                if required_key and session_key != required_key:
-                    return self._send_json(403, {
-                        "success": False,
-                        "smtpSent": False,
-                        "error": f"Invalid Session Key for {adm.get('name', speaker_id)}. Attendance verification failed — email not dispatched."
-                    })
+            speaker_label = adm.get("name", speaker_name or speaker_id) if adm else (speaker_name or speaker_id)
+            if speaker_id and not is_valid_session_key(speaker_id, session_key):
+                return self._send_json(403, {
+                    "success": False,
+                    "smtpSent": False,
+                    "error": f"Invalid Session Key for {speaker_label}. Attendance verification failed — email not dispatched."
+                })
 
             res = send_certificate_email(to_email, full_name, cert_id, event_name, speaker_name, speaker_id, event_date, image_data)
             return self._send_json(200, res)
@@ -532,8 +601,7 @@ class handler(BaseHTTPRequestHandler):
             adm = ADMIN_ACCOUNTS.get(speaker_id)
             if not adm:
                 return self._send_json(400, {"success": False, "valid": False, "message": "Unknown speaker"})
-            required_key = str(adm.get("sessionKey", "")).strip().upper()
-            is_valid = bool(key and required_key and key == required_key)
+            is_valid = is_valid_session_key(speaker_id, key)
             return self._send_json(200, {
                 "success": True,
                 "valid": is_valid,

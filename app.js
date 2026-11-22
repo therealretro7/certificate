@@ -129,7 +129,7 @@ async function sbLoadRequests() {
 
 async function sbSaveEventSettings(settings) {
   try {
-    await sbFetch("/rest/v1/certificate_requests", "POST", [{
+    await sbFetch("/rest/v1/certificate_requests?on_conflict=id", "POST", [{
       id: "CONFIG_EVENT_SETTINGS",
       full_name: "EVENT_CONFIG",
       email: JSON.stringify(settings),
@@ -154,7 +154,7 @@ async function sbSaveEventSettings(settings) {
 
 async function sbSaveSpeakerKeys(keys) {
   try {
-    await sbFetch("/rest/v1/certificate_requests", "POST", [{
+    await sbFetch("/rest/v1/certificate_requests?on_conflict=id", "POST", [{
       id: "CONFIG_SPEAKER_KEYS",
       full_name: "SYSTEM_CONFIG",
       email: JSON.stringify(keys),
@@ -179,7 +179,7 @@ async function sbSaveSpeakerKeys(keys) {
 
 async function sbUpsertRequest(req) {
   try {
-    await sbFetch("/rest/v1/certificate_requests", "POST", [mapRequestToDb(req)], {
+    await sbFetch("/rest/v1/certificate_requests?on_conflict=id", "POST", [mapRequestToDb(req)], {
       "Prefer": "resolution=merge-duplicates,return=representation"
     });
     // update local cache too
@@ -265,6 +265,45 @@ const ADMIN_CONFIG = {
     sessionKey: "GSA-THOMAS-2026"
   }
 };
+
+const DEFAULT_SPEAKER_KEYS = {
+  admin1: "GSA-ASWIN-2026",
+  admin2: "GSA-PAULBIN-2026",
+  admin3: "GSA-THOMAS-2026"
+};
+
+function getSpeakerValidKeys(speakerId) {
+  const keys = new Set();
+  if (!speakerId) return keys;
+
+  // 1. Current in-memory sessionKey
+  if (ADMIN_CONFIG[speakerId]?.sessionKey) {
+    keys.add(String(ADMIN_CONFIG[speakerId].sessionKey).trim().toUpperCase());
+  }
+
+  // 2. localStorage saved keys
+  try {
+    const saved = JSON.parse(localStorage.getItem("gsa_speaker_keys") || "{}");
+    if (saved[speakerId]) {
+      keys.add(String(saved[speakerId]).trim().toUpperCase());
+    }
+  } catch (e) {}
+
+  // 3. Factory default key
+  if (DEFAULT_SPEAKER_KEYS[speakerId]) {
+    keys.add(DEFAULT_SPEAKER_KEYS[speakerId].trim().toUpperCase());
+  }
+
+  keys.delete("");
+  return keys;
+}
+
+function isSessionKeyValid(speakerId, enteredKey) {
+  if (!enteredKey) return false;
+  const clean = String(enteredKey).trim().toUpperCase();
+  const validSet = getSpeakerValidKeys(speakerId);
+  return validSet.has(clean);
+}
 
 // Global App State
 const savedEventSettings = JSON.parse(localStorage.getItem("gsa_event_settings") || "{}");
@@ -615,7 +654,6 @@ function validateSessionKeyUI() {
   if (!elements.sessionAccessKey) return false;
   const speaker = getSelectedSpeaker();
   const entered = elements.sessionAccessKey.value.trim().toUpperCase();
-  const required = (speaker.sessionKey || "").trim().toUpperCase();
 
   if (!entered) {
     if (elements.sessionKeyFeedback) elements.sessionKeyFeedback.style.display = "none";
@@ -629,7 +667,7 @@ function validateSessionKeyUI() {
     return false;
   }
 
-  if (entered === required) {
+  if (isSessionKeyValid(speaker.id, entered)) {
     if (elements.sessionKeyFeedback) {
       elements.sessionKeyFeedback.style.display = "block";
       elements.sessionKeyFeedback.style.color = "#137333";
@@ -848,7 +886,6 @@ async function handleCertificateRequest() {
   const speaker = getSelectedSpeaker();
   const eventDate = elements.sessionDate.value.trim() || "08/10/2026";
   const enteredKey = (elements.sessionAccessKey ? elements.sessionAccessKey.value : "").trim().toUpperCase();
-  const requiredKey = (speaker.sessionKey || "").trim().toUpperCase();
 
   if (!name) {
     showToast("Please enter your full name");
@@ -873,7 +910,7 @@ async function handleCertificateRequest() {
     return;
   }
 
-  if (enteredKey !== requiredKey) {
+  if (!isSessionKeyValid(speaker.id, enteredKey)) {
     showToast(`❌ Invalid Session Key for ${speaker.name}. Only attendees who attended this session can access certificates.`);
     if (elements.sessionAccessKey) {
       elements.sessionAccessKey.focus();
@@ -1539,12 +1576,20 @@ async function syncAdminSettingsFromServer() {
     if (resp.ok) {
       const data = await resp.json();
       if (data.admins) {
+        const localSaved = JSON.parse(localStorage.getItem("gsa_speaker_keys") || "{}");
         for (const k in data.admins) {
           if (ADMIN_CONFIG[k]) {
             if (data.admins[k].gid) ADMIN_CONFIG[k].gid = data.admins[k].gid;
             if (data.admins[k].signatureFile) ADMIN_CONFIG[k].signatureFile = data.admins[k].signatureFile;
             if (data.admins[k].email) ADMIN_CONFIG[k].email = data.admins[k].email;
-            if (data.admins[k].sessionKey) ADMIN_CONFIG[k].sessionKey = data.admins[k].sessionKey;
+
+            // Preserve custom key from localStorage; don't let default server key overwrite custom saved key
+            const serverKey = data.admins[k].sessionKey ? data.admins[k].sessionKey.trim().toUpperCase() : "";
+            if (serverKey && (!localSaved[k] || localSaved[k] === DEFAULT_SPEAKER_KEYS[k])) {
+              ADMIN_CONFIG[k].sessionKey = serverKey;
+            } else if (localSaved[k]) {
+              ADMIN_CONFIG[k].sessionKey = localSaved[k];
+            }
 
             const gidInput = document.getElementById(`adminGidInput_${k}`);
             if (gidInput) gidInput.value = ADMIN_CONFIG[k].gid;
@@ -1565,7 +1610,9 @@ async function syncAdminSettingsFromServer() {
         try {
           const currentKeys = JSON.parse(localStorage.getItem("gsa_speaker_keys") || "{}");
           for (const sp in ADMIN_CONFIG) {
-            if (ADMIN_CONFIG[sp]?.sessionKey) currentKeys[sp] = ADMIN_CONFIG[sp].sessionKey;
+            if (ADMIN_CONFIG[sp]?.sessionKey && !currentKeys[sp]) {
+              currentKeys[sp] = ADMIN_CONFIG[sp].sessionKey;
+            }
           }
           localStorage.setItem("gsa_speaker_keys", JSON.stringify(currentKeys));
         } catch (e) {}
@@ -1631,21 +1678,27 @@ window.handleSaveSessionKey = async function (speakerId, overrideKey = null) {
   if (quickInput && state.currentAdmin && state.currentAdmin.id === speakerId) {
     quickInput.value = newKey;
   }
-  validateSessionKeyUI();
 
-  // 2. Persist to Supabase Cloud Database so it remains the same permanently across all devices & serverless instances
-  const currentKeys = {
-    admin1: ADMIN_CONFIG.admin1.sessionKey,
-    admin2: ADMIN_CONFIG.admin2.sessionKey,
-    admin3: ADMIN_CONFIG.admin3.sessionKey,
-    [speakerId]: newKey
+  // 2. Persist to local browser storage first so attendee form immediately accepts it
+  let currentKeys = {
+    admin1: ADMIN_CONFIG.admin1.sessionKey || DEFAULT_SPEAKER_KEYS.admin1,
+    admin2: ADMIN_CONFIG.admin2.sessionKey || DEFAULT_SPEAKER_KEYS.admin2,
+    admin3: ADMIN_CONFIG.admin3.sessionKey || DEFAULT_SPEAKER_KEYS.admin3
   };
-  await sbSaveSpeakerKeys(currentKeys);
+  try {
+    const cached = JSON.parse(localStorage.getItem("gsa_speaker_keys") || "{}");
+    currentKeys = { ...currentKeys, ...cached };
+  } catch (e) {}
+  currentKeys[speakerId] = newKey;
 
-  // 3. Persist to local browser storage
   try {
     localStorage.setItem("gsa_speaker_keys", JSON.stringify(currentKeys));
   } catch (e) {}
+
+  validateSessionKeyUI();
+
+  // 3. Persist to Supabase Cloud Database so it remains the same permanently across all devices & serverless instances
+  await sbSaveSpeakerKeys(currentKeys);
 
   // 4. Sync with Backend API
   try {
